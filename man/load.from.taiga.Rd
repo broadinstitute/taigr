@@ -6,7 +6,8 @@
 \usage{
 load.from.taiga(data.id = NULL, data.name = NULL, data.version = NULL,
   data.dir = "~/.taiga", force.taiga = FALSE,
-  taiga.url = "http://datasci-dev:8999", no.save = FALSE, quiet = FALSE)
+  taiga.url = "http://datasci-dev:8999", cache.id = FALSE,
+  no.save = FALSE, quiet = FALSE)
 }
 \arguments{
 \item{data.id}{The dataset ID in taiga.}
@@ -20,6 +21,9 @@ load.from.taiga(data.id = NULL, data.name = NULL, data.version = NULL,
 \item{force.taiga}{Force function to re-download data from taiga.}
 
 \item{taiga.url}{Where is taiga?}
+
+\item{cache.id}{use <id>.RData for filename instead of
+<name>_<version>.RData}
 
 \item{no.save}{Do not save dataset to cache.}
 

@@ -10,3 +10,4 @@ Description: When loading data from taiga, it can look for a saved version
     and write the object to disk.
 License: What license is it under?
 LazyData: true
+Suggests: testthat
