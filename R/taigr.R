@@ -17,6 +17,8 @@ NULL
 #' @param data.id The dataset ID in taiga.
 #' @param data.name The dataset name in taiga.
 #' @param data.version The dataset version number in taiga.
+#' @param transpose transpose the data before returning it. the cached
+#'  version will not be transposed.
 #' @param data.dir Where to look for and save cached version of the data.
 #' @param force.taiga Force function to re-download data from taiga.
 #' @param taiga.url Where is taiga?
@@ -28,6 +30,7 @@ NULL
 load.from.taiga <- function(data.id = NULL,
                             data.name = NULL,
                             data.version = NULL,
+                            transpose = FALSE,
                             data.dir = "~/.taiga",
                             force.taiga = FALSE,
                             taiga.url = "http://datasci-dev:8999",
@@ -73,6 +76,10 @@ load.from.taiga <- function(data.id = NULL,
                 save.using.name(data, data.dir, data.name, data.version, quiet)
             }
         }
+    }
+
+    if (transpose) {
+        data <- t(data)
     }
 
     return(data)

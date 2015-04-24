@@ -5,7 +5,7 @@
 \title{Load data from taiga}
 \usage{
 load.from.taiga(data.id = NULL, data.name = NULL, data.version = NULL,
-  data.dir = "~/.taiga", force.taiga = FALSE,
+  transpose = FALSE, data.dir = "~/.taiga", force.taiga = FALSE,
   taiga.url = "http://datasci-dev:8999", cache.id = FALSE,
   no.save = FALSE, quiet = FALSE)
 }
@@ -15,6 +15,9 @@ load.from.taiga(data.id = NULL, data.name = NULL, data.version = NULL,
 \item{data.name}{The dataset name in taiga.}
 
 \item{data.version}{The dataset version number in taiga.}
+
+\item{transpose}{transpose the data before returning it. the cached
+version will not be transposed.}
 
 \item{data.dir}{Where to look for and save cached version of the data.}
 
