@@ -22,6 +22,20 @@ test_that("name with missing version throws warning", {
 })
 
 
+context("Cache")
+
+test_that("data.dir is created if it doesn't exist", {
+    data.dir <- "~/.taiga.tests"
+    if (file.exists(data.dir)) unlink(data.dir, recursive=TRUE)
+    data <- load.from.taiga(data.name=data.name,
+                            data.version=data.version,
+                            data.dir=data.dir,
+                            quiet=T)
+    expect_true(file.exists(data.dir))
+    unlink(data.dir, recursive=TRUE)
+})
+
+
 context("File and Source naming")
 
 test_that("naming source/file by name and version works", {

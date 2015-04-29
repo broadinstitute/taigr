@@ -27,6 +27,7 @@ NULL
 #' @param no.save Do not save dataset to cache.
 #' @param quiet Do not print messages.
 #' @return The dataset loaded into your R session.
+#' @export
 load.from.taiga <- function(data.id = NULL,
                             data.name = NULL,
                             data.version = NULL,
@@ -40,6 +41,12 @@ load.from.taiga <- function(data.id = NULL,
 
     if (is.null(data.id) && is.null(data.name)) {
         stop("Error: must supply either data.id or data.name")
+    }
+
+    if (! (force.taiga && no.save)) {
+        if (! file.exists(data.dir)) {
+            dir.create(data.dir)
+        }
     }
 
     if (is.null(data.name)) {
