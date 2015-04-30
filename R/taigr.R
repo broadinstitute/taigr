@@ -12,6 +12,37 @@
 NULL
 
 
+
+#' Visit Taiga page in web browser
+#'
+#' @param data.id The dataset ID in taiga.
+#' @param data.name The dataset name in taiga.
+#' @param data.version The dataset version number in taiga.
+#' @param taiga.url Where is taiga?
+#' @return the full URL
+#' @export
+visit.taiga.page <- function(data.id = NULL,
+                            data.name = NULL,
+                            data.version = NULL,
+                            taiga.url = "http://datasci-dev:8999") {
+
+    if (is.null(data.id) && is.null(data.name)) {
+        stop("Error: must supply either data.id or data.name")
+    }
+
+    if (is.null(data.id)) {
+        data.id <- get.data.id(taiga.url = taiga.url,
+                    data.name = data.name, data.version = data.version)
+    }
+
+    data.url <- paste(taiga.url, "/dataset/show/", data.id, sep="")
+
+    browseURL(data.url)
+
+    return(data.url)
+}
+
+
 #' Load data from taiga
 #'
 #' @param data.id The dataset ID in taiga.
