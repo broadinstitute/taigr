@@ -42,6 +42,46 @@ visit.taiga.page <- function(data.id = NULL,
     return(data.url)
 }
 
+#' Prettily print taiga dataset info
+#' @usage pretting.print.taiga.info(info)
+#' @param info named list of arguments to load.from.taiga
+#' @return NULL
+#' @export pretty.print.taiga.info
+pretty.print.taiga.info <- function(info) {
+    info <- capture.output(str(info, no.list=T))
+    info <- stringr::str_replace(info, ":List of .*", "")
+    info <- stringr::str_replace(info, ": (num|chr|logi)",": ")
+    cat(info, sep="\n")
+}
+
+#' Load multiple datasets from taiga
+#'
+#' @param info named list of arguments to load.from.taiga
+#' @param ... extra arguments passed to load.from.taiga
+#' @return named list of datasets
+#'
+#' @examples
+#' datasets.info <- list(
+#'     cnv = list(
+#'         data.name = "ccle-copy-number-variants",
+#'         data.version = 1),
+#'     rpkm = list(
+#'         data.name="ccle-rnaseq-gene-expression-rpkm-for-analysis-in-manuscripts-protein-coding-genes-only-hgnc-mapped",
+#'         data.version = 3))
+#' datasets <- load.all.from.taiga(datasets.info, transpose=TRUE)
+#' @export
+load.all.from.taiga <- function(info, ...) {
+
+    info <- plyr::llply(info, function(i) {
+        c(i, list(...))
+    })
+
+    dataset.list <- plyr::llply(info, function(i) {
+        do.call(load.from.taiga, i, )
+    })
+
+    return(dataset.list)
+}
 
 #' Load data from taiga
 #'
