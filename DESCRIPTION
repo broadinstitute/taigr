@@ -11,6 +11,6 @@ Description: When loading data from taiga, it can look for a saved version
 License: What license is it under?
 LazyData: true
 Imports:
-    magrittr,
+    plyr,
     stringr
 Suggests: testthat

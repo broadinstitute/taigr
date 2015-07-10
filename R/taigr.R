@@ -46,11 +46,12 @@ visit.taiga.page <- function(data.id = NULL,
 #' @usage pretting.print.taiga.info(info)
 #' @param info named list of arguments to load.from.taiga
 #' @return NULL
+#' @importFrom stringr str_replace
 #' @export pretty.print.taiga.info
 pretty.print.taiga.info <- function(info) {
     info <- capture.output(str(info, no.list=T))
-    info <- stringr::str_replace(info, ":List of .*", "")
-    info <- stringr::str_replace(info, ": (num|chr|logi)",": ")
+    info <- str_replace(info, ":List of .*", "")
+    info <- str_replace(info, ": (num|chr|logi)",": ")
     cat(info, sep="\n")
 }
 
@@ -69,14 +70,15 @@ pretty.print.taiga.info <- function(info) {
 #'         data.name="ccle-rnaseq-gene-expression-rpkm-for-analysis-in-manuscripts-protein-coding-genes-only-hgnc-mapped",
 #'         data.version = 3))
 #' datasets <- load.all.from.taiga(datasets.info, transpose=TRUE)
+#' @importFrom plyr llply
 #' @export
 load.all.from.taiga <- function(info, ...) {
 
-    info <- plyr::llply(info, function(i) {
+    info <- llply(info, function(i) {
         c(i, list(...))
     })
 
-    dataset.list <- plyr::llply(info, function(i) {
+    dataset.list <- llply(info, function(i) {
         do.call(load.from.taiga, i, )
     })
 
