@@ -25,8 +25,13 @@ demeter <- load.from.taiga(
 Useful if you want to see if there is an updated version of this dataset
 
 ```
-visit.taiga.page(
-	data.name = "achilles-v2-20-1-demeter-z-scores-ignoring-expression")
+visit.taiga.page(data.name = "achilles-v2-20-1-demeter-z-scores-ignoring-expression")
+```
+
+or if you have the ID, but don't know what dataset it is
+
+```
+visit.taiga.page(data.id = "3f6bc24c-1679-43c5-beff-c4a084af13e3")
 ```
 
 ## Load many datasets at once
