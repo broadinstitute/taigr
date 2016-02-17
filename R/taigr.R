@@ -11,8 +11,6 @@
 #'
 NULL
 
-
-
 #' Visit Taiga page in web browser
 #'
 #' @param data.id The dataset ID in taiga.
@@ -24,7 +22,7 @@ NULL
 visit.taiga.page <- function(data.id = NULL,
                             data.name = NULL,
                             data.version = NULL,
-                            taiga.url = "http://datasci-dev:8999") {
+                            taiga.url = getOption("default.taiga.url", "http://datasci-dev:8999")) {
 
     if (is.null(data.id) && is.null(data.name)) {
         stop("Error: must supply either data.id or data.name")
@@ -107,7 +105,7 @@ load.from.taiga <- function(data.id = NULL,
                             transpose = FALSE,
                             data.dir = "~/.taiga",
                             force.taiga = FALSE,
-                            taiga.url = "http://datasci-dev:8999",
+                            taiga.url = getOption("default.taiga.url", "http://datasci-dev:8999"),
                             cache.id = FALSE,
                             no.save = FALSE,
                             quiet = FALSE) {
