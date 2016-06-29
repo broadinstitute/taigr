@@ -4,7 +4,22 @@ Light weight R package for loading datasets from taiga. Conveniently caches data
 
 
 ## Installation
+To install the last 'released' version:
+```
+options(repos = c(
+	"https://iwww.broadinstitute.org/~datasci/R-packages",
+	"https://cran.cnr.berkeley.edu"))
+install.packages('taigr')
+```
 
+To install a development version from git:
+
+```
+git clone ssh://git@stash.broadinstitute.org:7999/cpds/taigr.git
+R CMD INSTALL .
+```
+
+Alternatively if you have a working git2r package installed (most people don't) you can install via:
 ```
 library(devtools)
 install_git(url="ssh://git@stash.broadinstitute.org:7999/cpds/taigr.git")
