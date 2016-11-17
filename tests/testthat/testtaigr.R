@@ -1,4 +1,4 @@
-taiga.url <- "http://datasci-dev:8999"
+taiga.url <- "http://taiga.broadinstitute.org"
 data.dir <- "~/.taiga"
 data.id <- "80833526-448b-4b9f-a661-a9407a67e778"
 data.name <- "ccle-sample-info"
@@ -39,9 +39,9 @@ test_that("data.dir is created if it doesn't exist", {
 context("File and Source naming")
 
 test_that("naming source/file by name and version works", {
-    data.source <- paste("http://datasci-dev:8999/rest/v0/namedDataset?",
-                    "fetch=content&format=rdata&name=ccle-sample-info",
-                    "&version=1",sep="")
+    data.source <- paste(taiga.url, "/rest/v0/namedDataset?",
+                         "fetch=content&format=rdata&name=ccle-sample-info",
+                         "&version=1",sep="")
     data.file <- paste("~/.taiga/ccle-sample-info_1.Rdata")
     expect_equal(make.name.source(taiga.url, data.name, data.version),
                  data.source)
@@ -50,7 +50,7 @@ test_that("naming source/file by name and version works", {
 })
 
 test_that("naming source/file by id works", {
-    data.source <- paste("http://datasci-dev:8999/rest/v0/datasets/",
+    data.source <- paste(taiga.url, "/rest/v0/datasets/",
                          "80833526-448b-4b9f-a661-a9407a67e778",
                          "?format=rdata",sep="")
     data.file <- paste("~/.taiga/80833526-448b-4b9f-a661-a9407a67e778.Rdata")
@@ -94,7 +94,7 @@ test_that("save by name works", {
                             taiga.url,force.taiga=TRUE,quiet=TRUE)
     save.using.name(data, data.dir,data.name,data.version,quiet=TRUE)
     expect_true(file.exists(data.file))
-    expect_more_than(file.info(data.file)$size,0)
+    expect_gt(file.info(data.file)$size,0)
 })
 
 test_that("save by id works", {
@@ -104,7 +104,7 @@ test_that("save by id works", {
                           taiga.url,force.taiga=TRUE,quiet=TRUE)
     save.using.id(data, data.dir,data.id,quiet=TRUE)
     expect_true(file.exists(data.file))
-    expect_more_than(file.info(data.file)$size,0)
+    expect_gt(file.info(data.file)$size,0)
 })
 
 context("load.from.taiga pulls/puts data from/to all the right places")

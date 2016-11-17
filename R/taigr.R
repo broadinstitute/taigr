@@ -22,7 +22,7 @@ NULL
 visit.taiga.page <- function(data.id = NULL,
                             data.name = NULL,
                             data.version = NULL,
-                            taiga.url = getOption("default.taiga.url", "http://datasci-dev:8999")) {
+                            taiga.url = getOption("default.taiga.url", "http://taiga.broadinstitute.org")) {
 
     if (is.null(data.id) && is.null(data.name)) {
         stop("Error: must supply either data.id or data.name")
@@ -105,7 +105,7 @@ load.from.taiga <- function(data.id = NULL,
                             transpose = FALSE,
                             data.dir = "~/.taiga",
                             force.taiga = FALSE,
-                            taiga.url = getOption("default.taiga.url", "http://datasci-dev:8999"),
+                            taiga.url = getOption("default.taiga.url", "http://taiga.broadinstitute.org"),
                             cache.id = FALSE,
                             no.save = FALSE,
                             quiet = FALSE) {
