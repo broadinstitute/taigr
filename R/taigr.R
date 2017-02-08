@@ -285,7 +285,6 @@ taiga2.get.datafile <- function(taiga.url, data.id, data.name, data.version, dat
 
     if(force) {
         url <- paste0(url, "&force=Y")
-        force <- F
     }
 
     cat("url", url, "\n")
@@ -309,6 +308,7 @@ request.rds.from.taiga2 <- function(data.id, data.name, data.version, data.file,
     waiting.for.conversion <- T
     while(waiting.for.conversion) {
         response <- taiga2.get.datafile(taiga.url, data.id, data.name, data.version, data.file, force, "rds")
+        force <- F
 
         if(is.null(response$urls)) {
             if(first.attempt) {
