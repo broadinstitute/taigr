@@ -11,6 +11,8 @@
 #'
 NULL
 
+######## TAIGA1 methods
+
 #' Visit Taiga page in web browser
 #'
 #' @param data.id The dataset ID in taiga.
@@ -108,7 +110,13 @@ load.from.taiga <- function(data.id = NULL,
                             taiga.url = getOption("default.taiga.url", "http://datasci-dev:8999"),
                             cache.id = FALSE,
                             no.save = FALSE,
-                            quiet = FALSE) {
+                            quiet = FALSE,
+                            taiga.version=1,
+                            force.convert=F) {
+
+    if(taiga.version!=1) {
+        return(load.from.taiga2(data.id=data.id, data.name=data.name, data.version=data.version, transpose=transpose, data.dir=data.dir, force.taiga=force.taiga, taiga.url=taiga.url, cache.id=cache.id, no.save=no.save, quiet=quiet, force=force.convert))
+    }
 
     if (is.null(data.id) && is.null(data.name)) {
         stop("Error: must supply either data.id or data.name")
@@ -258,3 +266,181 @@ make.id.source <- function(taiga.url, data.id) {
     return(paste(taiga.url,
                  "/rest/v0/datasets/",data.id,"?format=rdata", sep=''))
 }
+
+#### TAIGA2 methods below
+
+request.rds.from.taiga2 <- function(data.id, data.name, data.version, data.file, taiga.url, force)
+{
+    first.attempt <- T
+    prev.status <- NULL
+    delay.between.polls <- 1
+    waiting.for.conversion <- T
+    while(waiting.for.conversion) {
+        url <- paste0(taiga.url, "/api/datafile?format=rds")
+        if(! is.null(data.id)) {
+            url <- paste0(url, "&dataset_version_id=", data.id)
+        } else {
+            url <- paste0(url, "&dataset_permaname=", RCurl::curlEscape(data.name))
+            if(!is.null(data.version)) {
+                url <- paste0(url, "&version=", RCurl::curlEscape(data.version))
+            }
+        }
+        if(!is.null(data.file)) {
+            url <- paste0(url, "&datafile_name=", RCurl::curlEscape(data.file))
+        }
+
+        if(force) {
+            url <- paste0(url, "&force=Y")
+            force <- F
+        }
+
+        cat("url", url, "\n")
+#        h <- RCurl::basicHeaderGatherer()
+#        response.json <- RCurl::getURL(url, headerfunction = h$update) ;
+#        stopifnot(h$status == "200")
+        response.json <- RCurl::getURL(url) ;
+        response <- jsonlite::fromJSON(response.json)
+        print(response)
+        if(response$status == "500") {
+            stop("internal server error")
+        }
+
+        # TODO: need to recognize when an error occurred
+        if(is.null(response$urls)) {
+            if(first.attempt) {
+                cat("Taiga needs to convert data to rds before we can fetch it.  Waiting...\n")
+                cat(response$status, "\n")
+            } else {
+                if(prev.status != response$status) {
+                    cat(response$status, "\n")
+                }
+            }
+            prev.status <- response$status
+
+            first.attempt <- F
+            Sys.sleep(delay.between.polls)
+            delay.between.polls <- min(delay.between.polls * 1.5, 10)
+        } else {
+            waiting.for.conversion <- F
+        }
+    }
+
+    cat("Downloading...\n")
+    filenames <- sapply(response$urls, function(url) {
+        dest <- tempfile()
+        download.file(url, dest)
+        dest
+    } )
+
+    list(filenames=filenames, data.file.name=response$datafile_name, data.id=response$dataset_version_id, data.name=response$dataset_permaname, data.version=response$dataset_version)
+}
+
+load.from.multiple.rds <- function(filenames) {
+    do.call(rbind, lapply(filenames, readRDS))
+}
+
+save.to.taiga2.cache <- function(data.id, data.name, data.version, data.dir, data) {
+    # mkdir for rds files
+    # move from temp location to rds location
+    # write out file called data.name+data.version + ".idx" and one called data.id + ".idx"
+
+    stopifnot(!is.null(data.id))
+    stopifnot(!is.null(data.name))
+    stopifnot(!is.null(data.version))
+    stopifnot(!is.null(data.dir))
+    stopifnot(!is.null(data))
+
+    if(!dir.exists(data.dir)) {
+        dir.create(data.dir)
+    }
+
+    data.file = paste0(data.id, ".rds")
+
+    cat("writing", data.file)
+    saveRDS(data, paste0(data.dir, "/", data.file))
+
+    cat("wrting", paste0(data.id, ".idx"), paste0(data.name, "_", data.version, ".idx"))
+    writeLines(data.file, paste0(data.dir, '/', data.id, ".idx"))
+    writeLines(data.file, paste0(data.dir, '/', data.name, "_", data.version, ".idx"))
+}
+
+load.from.taiga2.cache <- function(data.id, data.name, data.version, data.dir) {
+    # with the addition of some objects are broken into multiple rds files, we now have an
+    # extra layer of indirection.  We look up a ".idx" file which contains a list of rds filenames
+    # that should be rbind'ed load the datafile.
+    if(!is.null(data.id)) {
+        idx.file <- paste0(data.dir, '/', data.id, ".idx")
+    } else {
+        stopifnot(!is.null(data.name) & !is.null(data.version))
+        idx.file <- paste0(data.dir, '/', data.name, "_", data.version, ".idx")
+    }
+
+    cat("Checking for", idx.file, "\n")
+
+    if(file.exists(idx.file)) {
+        filenames <- readLines(idx.file)
+        filenames <- sapply(filenames, function(x) paste0(data.dir, '/', x))
+        return(load.from.multiple.rds(filenames))
+    } else {
+        return (NULL)
+    }
+}
+
+load.from.taiga2 <- function(data.id = NULL,
+                            data.name = NULL,
+                            data.version = NULL,
+                            transpose = FALSE,
+                            data.dir = "~/.taiga",
+                            force.taiga = FALSE,
+                            taiga.url = "http://datasci-dev:8999",
+                            cache.id = FALSE,
+                            no.save = FALSE,
+                            quiet = FALSE,
+                            data.file = NULL,
+                            force.convert=F) {
+
+    # make sure only data.id or data.name is provided
+    if(!is.null(data.id)) {
+        dataset.description <- data.id
+        stopifnot(is.null(data.version) & is.null(data.name))
+    }
+
+    if(!is.null(data.name)) {
+        if(!is.null(data.version)) {
+            dataset.description <- paste0(data.name, " v", data.version, sep="")
+        } else {
+            dataset.description <- data.name
+        }
+        stopifnot(is.null(data.id))
+    }
+
+    # first check cache
+    data <- NULL
+    if(!force.taiga && !force.convert) {
+        cat("data.name", data.name, "\n")
+        cat("data.version", data.version, "\n")
+        data <- load.from.taiga2.cache(data.id = data.id, data.name=data.name, data.version=data.version, data.dir=data.dir)
+    }
+
+    if(is.null(data)) {
+        # if not in cache, pull and optionally store in cache
+        cat("Could not find", dataset.description, "in cache, requesting from taiga...\n")
+        result <- request.rds.from.taiga2(data.id = data.id, data.name=data.name, data.version=data.version, data.file=data.file, taiga.url=taiga.url, force=force.convert)
+
+        data <- load.from.multiple.rds(result$filenames)
+
+        if(!no.save) {
+            cat("Saving", dataset.description, "in cache (",result$dataset_version_id,")...\n")
+            save.to.taiga2.cache(data.id=result$data.id,
+                                 data.name=result$data.name,
+                                 data.version=result$data.version,
+                                 data.dir=data.dir,
+                                 data=data)
+        }
+    }
+
+    stopifnot(!is.null(data))
+
+    data
+}
+
