@@ -269,7 +269,9 @@ make.id.source <- function(taiga.url, data.id) {
 
 #### TAIGA2 methods below
 
-taiga2.get.datafile <- function(taiga.url, data.id, data.name, data.version, data.file, force, format) {
+taiga2.get.datafile <- function(taiga.url, data.id, data.name, data.version, data.file, force, format, token) {
+    stopifnot(length(token) == 1)
+
     url <- paste0(taiga.url, "/api/datafile?format=", format)
     if(! is.null(data.id)) {
         url <- paste0(url, "&dataset_version_id=", data.id)
@@ -288,26 +290,30 @@ taiga2.get.datafile <- function(taiga.url, data.id, data.name, data.version, dat
     }
 
     cat("url", url, "\n")
-    response.json <- RCurl::getURL(url) ;
-    response <- jsonlite::fromJSON(response.json)
+    h = RCurl::basicTextGatherer()
+    response.json <- RCurl::getURL(url, headerfunction = h$update, httpheader = c(Authorization=paste0("Bearer ", token)))
+    status_line <- h$value(NULL)[1]
+    status <- as.integer(strsplit(status_line, " ")[[1]][2])
 
-    #print(response)
-
-    if(response$status == "500") {
+    if(status == 500) {
         stop("internal server error")
     }
+
+    response <- jsonlite::fromJSON(response.json)
+
+    response$http_status <- status
 
     response
 }
 
-request.rds.from.taiga2 <- function(data.id, data.name, data.version, data.file, taiga.url, force)
+request.rds.from.taiga2 <- function(data.id, data.name, data.version, data.file, taiga.url, force, token)
 {
     first.attempt <- T
     prev.status <- NULL
     delay.between.polls <- 1
     waiting.for.conversion <- T
     while(waiting.for.conversion) {
-        response <- taiga2.get.datafile(taiga.url, data.id, data.name, data.version, data.file, force, "rds")
+        response <- taiga2.get.datafile(taiga.url, data.id, data.name, data.version, data.file, force, "rds", token)
         force <- F
 
         if(is.null(response$urls)) {
@@ -329,10 +335,11 @@ request.rds.from.taiga2 <- function(data.id, data.name, data.version, data.file,
         }
     }
 
-    cat("Downloading...\n")
     filenames <- sapply(response$urls, function(url) {
+        message(paste0("Downloading ", url," ..."))
         dest <- tempfile()
-        download.file(url, dest)
+        # leaving off method results in 403 error (??)
+        download.file(url, dest, method='curl')
         dest
     } )
 
@@ -340,7 +347,11 @@ request.rds.from.taiga2 <- function(data.id, data.name, data.version, data.file,
 }
 
 load.from.multiple.rds <- function(filenames) {
-    do.call(rbind, lapply(filenames, readRDS))
+    combined <- do.call(rbind, lapply(filenames, readRDS))
+    if(is.data.frame(combined)) {
+        rownames(combined) <- NULL
+    }
+    combined
 }
 
 save.to.taiga2.cache <- function(data.id, data.name, data.version, datafile.name, data.dir, data) {
@@ -361,8 +372,8 @@ save.to.taiga2.cache <- function(data.id, data.name, data.version, datafile.name
 
     data.file = paste0(data.id, ".rds")
 
-    cat("writing", data.file, "\n")
     saveRDS(data, paste0(data.dir, "/", data.file))
+    message(paste0("Saved to cache as ", data.file))
 
     normalized.datafile.name <- normalize.name(datafile.name)
 
@@ -370,6 +381,7 @@ save.to.taiga2.cache <- function(data.id, data.name, data.version, datafile.name
         paste0(data.dir, '/', data.id, "_", normalized.datafile.name, ".idx"),
         paste0(data.dir, '/', data.name, "_", normalized.datafile.name, "_", data.version, ".idx")
     )
+
     cat("writing", index.file.names, "\n")
     for(fn in index.file.names) {
         writeLines(data.file, fn)
@@ -390,7 +402,7 @@ load.from.taiga2.cache <- function(data.id, data.name, data.version, datafile.na
 
     # with the addition of some objects are broken into multiple rds files, we now have an
     # extra layer of indirection.  We look up a ".idx" file which contains a list of rds filenames
-    # that should be rbind'ed load the datafile.
+# that should be rbind'ed load the datafile.
     if(!is.null(data.id)) {
         idx.file <- paste0(data.dir, '/', data.id, "_", normalized.datafile.name, ".idx")
     } else {
@@ -398,11 +410,13 @@ load.from.taiga2.cache <- function(data.id, data.name, data.version, datafile.na
         idx.file <- paste0(data.dir, '/', data.name, "_", normalized.datafile.name, "_", data.version, ".idx")
     }
 
-    cat("Checking for", idx.file, "\n")
-
     if(file.exists(idx.file)) {
+        # the combining is presently happening before addition to the cache, so I don't think
+        # handling multiple lines in file is necessary.
         filenames <- readLines(idx.file)
         filenames <- sapply(filenames, function(x) paste0(data.dir, '/', x))
+
+        message(paste0("Loading from cached file ", filenames))
         return(load.from.multiple.rds(filenames))
     } else {
         return (NULL)
@@ -437,8 +451,20 @@ load.from.taiga2 <- function(data.id = NULL,
         stopifnot(is.null(data.id))
     }
 
+    token.filename <- paste0(data.dir, "/token")
+    if(!file.exists(token.filename)) {
+        stop(paste0("Could not find token to use for authentication!  Please put your user token into ", token.filename))
+    }
+    token <- readLines(token.filename)
+    # only keep first line in case there's extra whitespace
+    token <- token[1]
+
     # first resolve to a single file
-    response <- taiga2.get.datafile(taiga.url, data.id, data.name, data.version, data.file, force.convert, "metadata")
+    response <- taiga2.get.datafile(taiga.url, data.id, data.name, data.version, data.file, force.convert, "metadata", token)
+    if(response$http_status != "200") {
+        stop(paste0("Request for metadata failed, status: ", response$status))
+    }
+
     data.id <- response$dataset_version_id
     data.name <- response$dataset_permaname
     data.version <- response$dataset_version
@@ -458,7 +484,7 @@ load.from.taiga2 <- function(data.id = NULL,
     if(is.null(data)) {
         # if not in cache, pull and optionally store in cache
         cat("Could not find", dataset.description, "in cache, requesting from taiga...\n")
-        result <- request.rds.from.taiga2(data.id = data.id, data.name=data.name, data.version=data.version, data.file=data.file, taiga.url=taiga.url, force=force.convert)
+        result <- request.rds.from.taiga2(data.id = data.id, data.name=data.name, data.version=data.version, data.file=data.file, taiga.url=taiga.url, force=force.convert, token=token)
 
         data <- load.from.multiple.rds(result$filenames)
 
