@@ -4,6 +4,9 @@ data.id <- "80833526-448b-4b9f-a661-a9407a67e778"
 data.name <- "ccle-sample-info"
 data.version <- 1
 
+options(default.taiga.api.version=1)
+options(default.taiga.url=taiga.url)
+
 context("Exception handling")
 
 test_that("missing name and id throws error", {

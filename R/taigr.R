@@ -99,6 +99,7 @@ load.all.from.taiga <- function(info, ...) {
 #'  <name>_<version>.RData
 #' @param no.save Do not save dataset to cache.
 #' @param quiet Do not print messages.
+#' @param data.file file to load from within the dataset
 #' @return The dataset loaded into your R session.
 #' @export
 load.from.taiga <- function(data.id = NULL,
@@ -112,10 +113,15 @@ load.from.taiga <- function(data.id = NULL,
                             no.save = FALSE,
                             quiet = FALSE,
                             taiga.api.version=getOption("default.taiga.api.version", 1),
-                            force.convert=F) {
+                            force.convert=F,
+                            data.file=NULL) {
 
     if(taiga.api.version!=1) {
-        return(load.from.taiga2(data.id=data.id, data.name=data.name, data.version=data.version, transpose=transpose, data.dir=data.dir, force.taiga=force.taiga, taiga.url=taiga.url, cache.id=cache.id, no.save=no.save, quiet=quiet, force=force.convert))
+        return(load.from.taiga2(data.id=data.id, data.name=data.name, data.version=data.version, transpose=transpose, data.dir=data.dir, force.taiga=force.taiga, taiga.url=taiga.url, cache.id=cache.id, no.save=no.save, quiet=quiet, force=force.convert, data.file=data.file))
+    }
+
+    if(!is.null(data.file)) {
+        stop("Taiga1 does not support a non-null data.file parameter")
     }
 
     if (is.null(data.id) && is.null(data.name)) {
@@ -289,7 +295,6 @@ taiga2.get.datafile <- function(taiga.url, data.id, data.name, data.version, dat
         url <- paste0(url, "&force=Y")
     }
 
-    cat("url", url, "\n")
     h = RCurl::basicTextGatherer()
     response.json <- RCurl::getURL(url, headerfunction = h$update, httpheader = c(Authorization=paste0("Bearer ", token)))
     status_line <- h$value(NULL)[1]
@@ -461,7 +466,10 @@ load.from.taiga2 <- function(data.id = NULL,
 
     # first resolve to a single file
     response <- taiga2.get.datafile(taiga.url, data.id, data.name, data.version, data.file, force.convert, "metadata", token)
-    if(response$http_status != "200") {
+    if(response$http_status == "404") {
+        warning("No such datafile, load.from.taiga returning NULL")
+        return(NULL)
+    } else if(response$http_status != "200") {
         stop(paste0("Request for metadata failed, status: ", response$status))
     }
 
