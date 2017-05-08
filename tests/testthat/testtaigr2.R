@@ -47,3 +47,22 @@ test_that("loading missing results in null", {
     } )
 })
 
+test_that("Different files from same data version get cached differently", {
+    tiny.matrix <- load.from.taiga(data.name='taigr-data-40f2', data.version=1, data.file='tiny_matrix', force.taiga = T)
+    expect_equal(nrow(tiny.matrix), 2)
+    expect_equal(ncol(tiny.matrix), 3)
+
+    tiny.table <- load.from.taiga(data.name='taigr-data-40f2', data.version=1, data.file='tiny_table', force.taiga=T)
+    expect_equal(nrow(tiny.table), 3)
+    expect_equal(ncol(tiny.table), 4)
+
+    # now try again, using the cached values
+    tiny.matrix <- load.from.taiga(data.name='taigr-data-40f2', data.version=1, data.file='tiny_matrix')
+    expect_equal(nrow(tiny.matrix), 2)
+    expect_equal(ncol(tiny.matrix), 3)
+
+    tiny.table <- load.from.taiga(data.name='taigr-data-40f2', data.version=1, data.file='tiny_table')
+    expect_equal(nrow(tiny.table), 3)
+    expect_equal(ncol(tiny.table), 4)
+})
+

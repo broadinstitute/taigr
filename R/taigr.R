@@ -109,7 +109,7 @@ load.from.taiga <- function(data.id = NULL,
                             data.dir = "~/.taiga",
                             force.taiga = FALSE,
                             taiga.url = getOption("default.taiga.url",
-                                "https://cds.team/taiga2"),
+                                "https://cds.team/taiga"),
                             cache.id = FALSE,
                             no.save = FALSE,
                             quiet = FALSE,
@@ -376,12 +376,13 @@ save.to.taiga2.cache <- function(data.id, data.name, data.version, datafile.name
         dir.create(data.dir)
     }
 
-    data.file = paste0(data.id, ".rds")
+    normalized.datafile.name <- normalize.name(datafile.name)
+
+    data.file = paste0(data.id, "_", normalized.datafile.name, ".rds")
 
     saveRDS(data, paste0(data.dir, "/", data.file))
     message(paste0("Saved to cache as ", data.file))
 
-    normalized.datafile.name <- normalize.name(datafile.name)
 
     index.file.names <- c(
         paste0(data.dir, '/', data.id, "_", normalized.datafile.name, ".idx"),
