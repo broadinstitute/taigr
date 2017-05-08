@@ -66,3 +66,12 @@ test_that("Different files from same data version get cached differently", {
     expect_equal(ncol(tiny.table), 4)
 })
 
+test_that("Transpose is honored", {
+    tiny.matrix <- load.from.taiga(data.name='taigr-data-40f2', data.version=1, data.file='tiny_matrix')
+    expect_equal(nrow(tiny.matrix), 2)
+    expect_equal(ncol(tiny.matrix), 3)
+
+    tiny.matrix <- load.from.taiga(data.name='taigr-data-40f2', data.version=1, data.file='tiny_matrix', transpose = T)
+    expect_equal(nrow(tiny.matrix), 3)
+    expect_equal(ncol(tiny.matrix), 2)
+})

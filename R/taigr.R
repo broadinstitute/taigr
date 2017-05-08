@@ -513,6 +513,10 @@ load.from.taiga2 <- function(data.id = NULL,
 
     stopifnot(!is.null(data))
 
-    data
+    if(transpose) {
+        t(data)
+    } else {
+        data
+    }
 }
 
