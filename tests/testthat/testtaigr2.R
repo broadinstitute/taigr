@@ -1,4 +1,3 @@
-taiga.url <- "https://cds.team/taiga"
 mat.data.id <- "b9a6c877-37cb-4ebb-8c05-3385ff9a5ec7"
 mat.data.name <- "depcon-binary-context-matrix"
 df.data.id <- "0b8e280b-472c-42d4-b047-42cba9ed8e4c"
@@ -6,7 +5,7 @@ df.data.name <- "lineage-colors"
 data.version <- 1
 
 options(default.taiga.api.version=2)
-options(default.taiga.url=taiga.url)
+options(default.taiga.url="https://cds.team/taiga")
 
 test_that("loading by id works", {
     expect_is(load.from.taiga(mat.data.id),
@@ -66,6 +65,12 @@ test_that("Different files from same data version get cached differently", {
     expect_equal(ncol(tiny.table), 4)
 })
 
+test_that("alt data.id format works", {
+    tiny.matrix <- load.from.taiga('taigr-data-40f2.1', data.file='tiny_matrix')
+    expect_equal(nrow(tiny.matrix), 2)
+    expect_equal(ncol(tiny.matrix), 3)
+})
+
 test_that("Transpose is honored", {
     tiny.matrix <- load.from.taiga(data.name='taigr-data-40f2', data.version=1, data.file='tiny_matrix')
     expect_equal(nrow(tiny.matrix), 2)
@@ -75,3 +80,9 @@ test_that("Transpose is honored", {
     expect_equal(nrow(tiny.matrix), 3)
     expect_equal(ncol(tiny.matrix), 2)
 })
+
+#tiny.matrix <- load.from.taiga(data.id="f20ef5fb44794e52867e2e9ff6165822", data.file='tiny_matrix')
+#expect_equal(nrow(tiny.matrix), 2)
+#expect_equal(ncol(tiny.matrix), 3)
+
+

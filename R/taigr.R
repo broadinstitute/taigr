@@ -21,22 +21,39 @@ NULL
 #' @param taiga.url Where is taiga?
 #' @return the full URL
 #' @export
+#'
+#'
+
 visit.taiga.page <- function(data.id = NULL,
                             data.name = NULL,
                             data.version = NULL,
-                            taiga.url = getOption("default.taiga.url", "http://taiga.broadinstitute.org")) {
+                            taiga.url = getOption("default.taiga.url",
+                                "https://cds.team/taiga"),
+                            taiga.api.version=getOption("default.taiga.api.version", 2)
+                            ) {
 
     if (is.null(data.id) && is.null(data.name)) {
         stop("Error: must supply either data.id or data.name")
     }
 
-    if (is.null(data.id)) {
-        data.id <- get.data.id(taiga.url = taiga.url,
-                    data.name = data.name, data.version = data.version)
+    if(taiga.api.version == 1) {
+        if (is.null(data.id)) {
+            data.id <- get.data.id(taiga.url = taiga.url,
+                                   data.name = data.name, data.version = data.version)
+        }
+
+        data.url <- paste(taiga.url, "/dataset/show/", data.id, sep="")
+    } else {
+        stopifnot(taiga.api.version == 2)
+
+        if (is.null(data.id)) {
+            data.url <- paste0(taiga.url, "/dataset/", data.name, "/", data.version )
+        } else {
+            data.url <- paste0(taiga.url, "/dataset/x/", data.id )
+        }
     }
 
-    data.url <- paste(taiga.url, "/dataset/show/", data.id, sep="")
-
+    cat("opening", data.url)
     browseURL(data.url)
 
     return(data.url)
@@ -296,6 +313,11 @@ taiga2.get.datafile <- function(taiga.url, data.id, data.name, data.version, dat
         url <- paste0(url, "&force=Y")
     }
 
+    fetch.json(url, token)
+}
+
+fetch.json <- function(url, token) {
+    cat("Fetching", url, "\n")
     h = RCurl::basicTextGatherer()
     response.json <- RCurl::getURL(url, headerfunction = h$update, httpheader = c(Authorization=paste0("Bearer ", token)))
     status_line <- h$value(NULL)[1]
@@ -430,6 +452,40 @@ load.from.taiga2.cache <- function(data.id, data.name, data.version, datafile.na
     }
 }
 
+taiga2.get.dataset.version <- function(taiga.url, data.id, data.name, data.version, token) {
+    if (!is.null(data.id)) {
+        url <- paste0(taiga.url, '/api/dataset/x/', data.id)
+    } else {
+        url <- paste0(taiga.url, '/api/dataset/', data.name, '/', data.version)
+    }
+    #cat("taiga2.get.dataset.version: ", url, "\n")
+    r <- fetch.json(url, token)
+    #str(r)
+    r
+}
+
+taiga2.get.cached.dataset.version <- function(data.dir, data.id, data.name, data.version) {
+    if(!is.null(data.id)) {
+        fn <- paste0(data.dir,"/",data.id,".toc")
+    } else if(!is.null(data.name)) {
+        stopifnot(!is.null(data.version))
+        fn <- paste0(data.dir, "/", data.name, "_", data.version, ".toc")
+    }
+    response <- NULL
+#    cat("checking for ", fn, "\n")
+    if(file.exists(fn)) {
+        cat("loading cached data version from ", fn, "\n")
+        response <- readRDS(fn)
+    }
+    response
+}
+
+taiga2.cache.dataset.version <- function(data.dir, data.id, data.name, data.version, response) {
+    for(fn in c(paste0(data.dir,"/",data.id,".toc"), paste0(data.dir, "/", data.name, "_", data.version, ".toc"))) {
+        saveRDS(response, fn)
+    }
+}
+
 load.from.taiga2 <- function(data.id = NULL,
                             data.name = NULL,
                             data.version = NULL,
@@ -443,10 +499,19 @@ load.from.taiga2 <- function(data.id = NULL,
                             data.file = NULL,
                             force.convert=F) {
 
+
     # make sure only data.id or data.name is provided
     if(!is.null(data.id)) {
         dataset.description <- data.id
         stopifnot(is.null(data.version) & is.null(data.name))
+
+        # now, data.id may be a real id, or it may be a permaname + "." + version number
+        if(length(grep("[^.]+\\.\\d+", data.id)) == 1) {
+            id.parts <- strsplit(data.id, "\\.")[[1]]
+            data.id <- NULL
+            data.name <- id.parts[1]
+            data.version <- as.numeric(id.parts[2])
+        }
     }
 
     if(!is.null(data.name)) {
@@ -466,19 +531,48 @@ load.from.taiga2 <- function(data.id = NULL,
     # only keep first line in case there's extra whitespace
     token <- token[1]
 
-    # first resolve to a single file
-    response <- taiga2.get.datafile(taiga.url, data.id, data.name, data.version, data.file, force.convert, "metadata", token)
-    if(response$http_status == "404") {
-        warning("No such datafile, load.from.taiga returning NULL")
-        return(NULL)
-    } else if(response$http_status != "200") {
-        stop(paste0("Request for metadata failed, status: ", response$status))
+    # check get_version cache
+    response <- NULL
+    if(!force.taiga && !force.convert) {
+        response <- taiga2.get.cached.dataset.version(data.dir, data.id, data.name, data.version)
     }
 
-    data.id <- response$dataset_version_id
-    data.name <- response$dataset_permaname
-    data.version <- response$dataset_version
-    data.file <- response$datafile_name
+    # if could not get from cache, contact taiga
+    if(is.null(response)) {
+        response <- taiga2.get.dataset.version(taiga.url, data.id, data.name, data.version, token)
+        if(response$http_status == "404") {
+            warning("No such dataset, load.from.taiga returning NULL")
+            return(NULL)
+        } else if(response$http_status != "200") {
+            stop(paste0("Request for dataset failed, status: ", response$status))
+        }
+
+        # if we allow caching, now save it
+        if(!no.save) {
+            taiga2.cache.dataset.version(data.dir, data.id, data.name, data.version, response)
+        }
+    }
+
+    data.name <- response$dataset$permanames[1]
+    data.id <- response$datasetVersion$id
+    data.version <- response$datasetVersion$version
+
+    # now look for the file within the selected version
+    if(is.null(data.file)) {
+        data.file <- response$datasetVersion$datafiles$name[1]
+    } else {
+        found <- FALSE
+        #print("response")
+        #print(response)
+        for (dfname in response$datasetVersion$datafiles$name) {
+            if(dfname == data.file) {
+                found <- TRUE
+            }
+        }
+        if(!found) {
+            stop(paste0("No data file named ", data.file, " in dataset"))
+        }
+    }
 
     stopifnot(!is.null(data.id))
     stopifnot(!is.null(data.name))
