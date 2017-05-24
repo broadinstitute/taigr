@@ -319,7 +319,7 @@ taiga2.get.datafile <- function(taiga.url, data.id, data.name, data.version, dat
 fetch.json <- function(url, token) {
     cat("Fetching", url, "\n")
     h = RCurl::basicTextGatherer()
-    response.json <- RCurl::getURL(url, headerfunction = h$update, httpheader = c(Authorization=paste0("Bearer ", token)))
+    response.json <- RCurl::getURL(url, headerfunction = h$update, httpheader = c(Authorization=paste0("Bearer ", token)), .mapUnicode=F)
     status_line <- h$value(NULL)[1]
     status <- as.integer(strsplit(status_line, " ")[[1]][2])
 
