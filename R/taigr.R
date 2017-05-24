@@ -317,12 +317,12 @@ taiga2.get.datafile <- function(taiga.url, data.id, data.name, data.version, dat
 }
 
 fetch.json <- function(url, token) {
-    cat("Fetching", url, "\n")
+#    cat("Fetching", url, "\n")
     h = RCurl::basicTextGatherer()
     response.json <- RCurl::getURL(url, headerfunction = h$update, httpheader = c(Authorization=paste0("Bearer ", token)), .mapUnicode=F)
     status_line <- h$value(NULL)[1]
     status <- as.integer(strsplit(status_line, " ")[[1]][2])
-
+#    cat("Status", status,"\n")
     if(status == 500) {
         stop("internal server error")
     }
@@ -505,6 +505,15 @@ load.from.taiga2 <- function(data.id = NULL,
         dataset.description <- data.id
         stopifnot(is.null(data.version) & is.null(data.name))
 
+        # does data.id include a filename?
+        index.of.slash <- regexpr("/", data.id)
+        if(index.of.slash >= 1) {
+            # if so, we want to split off the filename from the data.id
+            stopifnot(is.null(data.file))
+            data.file <- substring(data.id, index.of.slash+1)
+            data.id <- substring(data.id, 1, index.of.slash-1)
+        }
+
         # now, data.id may be a real id, or it may be a permaname + "." + version number
         if(length(grep("[^.]+\\.\\d+", data.id)) == 1) {
             id.parts <- strsplit(data.id, "\\.")[[1]]
@@ -512,6 +521,8 @@ load.from.taiga2 <- function(data.id = NULL,
             data.name <- id.parts[1]
             data.version <- as.numeric(id.parts[2])
         }
+
+        # maybe put in a warning here if data.id looks like it is actually a permaname?
     }
 
     if(!is.null(data.name)) {
@@ -531,47 +542,62 @@ load.from.taiga2 <- function(data.id = NULL,
     # only keep first line in case there's extra whitespace
     token <- token[1]
 
-    # check get_version cache
-    response <- NULL
-    if(!force.taiga && !force.convert) {
-        response <- taiga2.get.cached.dataset.version(data.dir, data.id, data.name, data.version)
-    }
-
-    # if could not get from cache, contact taiga
-    if(is.null(response)) {
-        response <- taiga2.get.dataset.version(taiga.url, data.id, data.name, data.version, token)
-        if(response$http_status == "404") {
-            warning("No such dataset, load.from.taiga returning NULL")
-            return(NULL)
-        } else if(response$http_status != "200") {
-            stop(paste0("Request for dataset failed, status: ", response$status))
+    if((!is.null(data.name) && !is.null(data.version)) || !is.null(data.id)) {
+        # if it's possible to rely on the cache go that route.  (Only possible when we're asking for a specific version, not latest version)
+        response <- NULL
+        if(!force.taiga && !force.convert) {
+            response <- taiga2.get.cached.dataset.version(data.dir, data.id, data.name, data.version)
         }
 
-        # if we allow caching, now save it
-        if(!no.save) {
-            taiga2.cache.dataset.version(data.dir, data.id, data.name, data.version, response)
-        }
-    }
+        # if could not get from cache, contact taiga
+        if(is.null(response)) {
+            response <- taiga2.get.dataset.version(taiga.url, data.id, data.name, data.version, token)
+            if(response$http_status == "404") {
+                warning("No such dataset, load.from.taiga returning NULL")
+                return(NULL)
+            } else if(response$http_status != "200") {
+                stop(paste0("Request for dataset failed, status: ", response$status))
+            }
 
-    data.name <- response$dataset$permanames[1]
-    data.id <- response$datasetVersion$id
-    data.version <- response$datasetVersion$version
-
-    # now look for the file within the selected version
-    if(is.null(data.file)) {
-        data.file <- response$datasetVersion$datafiles$name[1]
-    } else {
-        found <- FALSE
-        #print("response")
-        #print(response)
-        for (dfname in response$datasetVersion$datafiles$name) {
-            if(dfname == data.file) {
-                found <- TRUE
+            # if we allow caching, now save it
+            if(!no.save) {
+                taiga2.cache.dataset.version(data.dir, data.id, data.name, data.version, response)
             }
         }
-        if(!found) {
-            stop(paste0("No data file named ", data.file, " in dataset"))
+
+        data.name <- response$dataset$permanames[1]
+        data.id <- response$datasetVersion$id
+        data.version <- response$datasetVersion$version
+
+        # now look for the file within the selected version
+        if(is.null(data.file)) {
+            data.file <- response$datasetVersion$datafiles$name[1]
+        } else {
+            found <- FALSE
+            #print("response")
+            #print(response)
+            for (dfname in response$datasetVersion$datafiles$name) {
+                if(dfname == data.file) {
+                    found <- TRUE
+                }
+            }
+            if(!found) {
+                stop(paste0("No data file named ", data.file, " in dataset"))
+            }
         }
+    } else {
+        response <- taiga2.get.datafile(taiga.url, data.id, data.name, data.version, data.file, force.convert, "metadata", token)
+        if(response$http_status == "404") {
+            warning("No such datafile, load.from.taiga returning NULL")
+            return(NULL)
+        } else if(response$http_status != "200") {
+            stop(paste0("Request for metadata failed, status: ", response$status))
+        }
+
+        data.id <- response$dataset_version_id
+        data.name <- response$dataset_permaname
+        data.version <- response$dataset_version
+        data.file <- response$datafile_name
     }
 
     stopifnot(!is.null(data.id))
