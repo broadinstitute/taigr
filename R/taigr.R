@@ -317,17 +317,29 @@ taiga2.get.datafile <- function(taiga.url, data.id, data.name, data.version, dat
 }
 
 fetch.json <- function(url, token) {
-#    cat("Fetching", url, "\n")
-    h = RCurl::basicTextGatherer()
-    response.json <- RCurl::getURL(url, headerfunction = h$update, httpheader = c(Authorization=paste0("Bearer ", token)), .mapUnicode=F)
-    status_line <- h$value(NULL)[1]
-    status <- as.integer(strsplit(status_line, " ")[[1]][2])
-#    cat("Status", status,"\n")
+    cat("Fetching", url, "\n")
+    resp <- httr::GET(url, httr::add_headers(Authorization=paste0("Bearer ",token)))
+    status <- resp$status_code
+    cat("Status", status,"\n")
     if(status == 500) {
         stop("internal server error")
     }
+    if(status != 404) {
+       response <- jsonlite::fromJSON(httr::content(resp, as="text"))
+    } else {
+       response <- list()
+    }
 
-    response <- jsonlite::fromJSON(response.json)
+#    h = RCurl::basicTextGatherer()
+#    response.json <- RCurl::getURL(url, headerfunction = h$update, httpheader = c(Authorization=paste0("Bearer ", token)), .mapUnicode=F)
+#    status_line <- h$value(NULL)[1]
+#    status <- as.integer(strsplit(status_line, " ")[[1]][2])
+#    cat("Status", status,"\n")
+#    if(status == 500) {
+#        stop("internal server error")
+#    }
+#
+#    response <- jsonlite::fromJSON(response.json)
 
     response$http_status <- status
 
@@ -366,8 +378,9 @@ request.rds.from.taiga2 <- function(data.id, data.name, data.version, data.file,
     filenames <- sapply(response$urls, function(url) {
         message(paste0("Downloading ", url," ..."))
         dest <- tempfile()
+        httr::GET(url, httr::write_disk(dest, overwrite=TRUE))
         # leaving off method results in 403 error (??)
-        download.file(url, dest, method='curl')
+        #download.file(url, dest, method='curl')
         dest
     } )
 
