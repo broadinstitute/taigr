@@ -547,10 +547,17 @@ load.from.taiga2 <- function(data.id = NULL,
         stopifnot(is.null(data.id))
     }
 
-    token.filename <- paste0(data.dir, "/token")
-    if(!file.exists(token.filename)) {
-        stop(paste0("Could not find token to use for authentication!  Please put your user token into ", token.filename))
+    find.first.token <- function() {
+        possibilities <- c(".taiga-token", paste0(data.dir, "/token"))
+        for (token.filename in possibilities) {
+            if(file.exists(token.filename)) {
+                return(token.filename)
+            }
+        }
+        stop(paste0("Could not find token to use for authentication!  Please put your user token into one of: ", paste(collapse=possibilities)))
     }
+
+    token.filename <- find.first.token()
     token <- readLines(token.filename)
     # only keep first line in case there's extra whitespace
     token <- token[1]

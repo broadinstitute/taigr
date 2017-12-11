@@ -1,7 +1,7 @@
 Package: taigr
 Type: Package
 Title: Load taiga data with cache functionality
-Version: 2.3.2
+Version: 2.4.0
 Date: 2015-03-25
 Authors@R: person("Robin", "Meyers", email = "rmeyers@broadinstitute.org",
     role = c("aut", "cre"))
