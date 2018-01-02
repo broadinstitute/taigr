@@ -501,8 +501,25 @@ taiga2.cache.dataset.version <- function(data.dir, data.id, data.name, data.vers
     }
 }
 
+read.token.file <- function(data.dir) {
+    find.first.token <- function() {
+        possibilities <- c(".taiga-token", paste0(data.dir, "/token"))
+        for (token.filename in possibilities) {
+            if(file.exists(token.filename)) {
+                return(token.filename)
+            }
+        }
+        stop(paste0("Could not find token to use for authentication!  Please put your user token into one of: ", paste(collapse=possibilities)))
+    }
+
+    token.filename <- find.first.token()
+    token <- readLines(token.filename)
+    # only keep first line in case there's extra whitespace
+    token <- token[1]
+}
+
 taiga2.resolve.id <- function(data.id, data.name, data.version, data.dir,
-force.taiga, taiga.url, cache.id, quiet, data.file, force.convert, no.save) {
+force.taiga, taiga.url, cache.id, quiet, data.file, force.convert, no.save, token) {
     # make sure only data.id or data.name is provided
     if(!is.null(data.id)) {
         dataset.description <- data.id
@@ -536,21 +553,6 @@ force.taiga, taiga.url, cache.id, quiet, data.file, force.convert, no.save) {
         }
         stopifnot(is.null(data.id))
     }
-
-    find.first.token <- function() {
-        possibilities <- c(".taiga-token", paste0(data.dir, "/token"))
-        for (token.filename in possibilities) {
-            if(file.exists(token.filename)) {
-                return(token.filename)
-            }
-        }
-        stop(paste0("Could not find token to use for authentication!  Please put your user token into one of: ", paste(collapse=possibilities)))
-    }
-
-    token.filename <- find.first.token()
-    token <- readLines(token.filename)
-    # only keep first line in case there's extra whitespace
-    token <- token[1]
 
     if((!is.null(data.name) && !is.null(data.version)) || !is.null(data.id)) {
         # if it's possible to rely on the cache go that route.  (Only possible when we're asking for a specific version, not latest version)
@@ -626,8 +628,11 @@ download.raw.from.taiga <- function(data.id = NULL,
                                 "https://cds.team/taiga"),
                             quiet = FALSE,
                             data.file = NULL) {
+
+    token <- read.token.file(data.dir)
+
     result <- taiga2.resolve.id(data.id, data.name, data.version, data.dir,
-force.taiga, taiga.url, cache.id, quiet, data.file, FALSE, FALSE)
+force.taiga, taiga.url, cache.id, quiet, data.file, FALSE, FALSE, token)
     if(is.null(result)) {
         return(NULL)
     }
@@ -644,13 +649,15 @@ force.taiga, taiga.url, cache.id, quiet, data.file, FALSE, FALSE)
 
     normalized.datafile.name <- normalize.name(data.file)
     if(!is.null(data.id)) {
-        cached.file <- paste0(data.dir, '/', data.id, "_", normalized.datafile.name, ".idx")
+        cached.file <- paste0(data.dir, '/', data.id, "_", normalized.datafile.name,".raw")
     } else {
         stopifnot(!is.null(data.name) & !is.null(data.version))
-        cached.file <- paste0(data.dir, '/', data.name, "_", normalized.datafile.name, "_", data.version, ".idx")
+        cached.file <- paste0(data.dir, '/', data.name, "_", normalized.datafile.name, "_", data.version, ".raw")
     }
 
+    cat("Checking for cached file", cached.file, "\n")
     if(!file.exists(cached.file)) {
+        print(token)
         result <- request.files.from.taiga2(data.id = data.id, data.name=data.name, data.version=data.version, data.file=data.file, taiga.url=taiga.url, force=FALSE,
         token=token, format="raw")
 
@@ -684,8 +691,10 @@ load.from.taiga2 <- function(data.id = NULL,
         }
     }
 
+    token <- read.token.file(data.dir)
     result <- taiga2.resolve.id(data.id, data.name, data.version, data.dir,
-force.taiga, taiga.url, cache.id, quiet, data.file, force.convert, no.save)
+force.taiga, taiga.url, cache.id, quiet, data.file, force.convert, no.save,
+token)
     if(is.null(result)) {
         return(NULL)
     }
