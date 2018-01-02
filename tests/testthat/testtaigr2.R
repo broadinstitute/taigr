@@ -87,7 +87,10 @@ test_that("Transpose is honored", {
     expect_equal(ncol(tiny.matrix), 2)
 })
 
-
+test_that("Loading raw works", {
+    fn <- download.raw.from.taiga(data.name='tiny-raw-d7e2', data.version=1)
+    expect_equal(readLines(fn), "sample")
+})
 
 #tiny.matrix <- load.from.taiga(data.id="f20ef5fb44794e52867e2e9ff6165822", data.file='tiny_matrix')
 #expect_equal(nrow(tiny.matrix), 2)

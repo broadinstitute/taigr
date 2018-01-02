@@ -346,14 +346,16 @@ fetch.json <- function(url, token) {
     response
 }
 
-request.rds.from.taiga2 <- function(data.id, data.name, data.version, data.file, taiga.url, force, token)
+request.files.from.taiga2 <- function(data.id, data.name, data.version, data.file, taiga.url, force,
+token, format="rds")
 {
     first.attempt <- T
     prev.status <- NULL
     delay.between.polls <- 1
     waiting.for.conversion <- T
     while(waiting.for.conversion) {
-        response <- taiga2.get.datafile(taiga.url, data.id, data.name, data.version, data.file, force, "rds", token)
+        response <- taiga2.get.datafile(taiga.url, data.id, data.name, data.version, data.file, force,
+format, token)
         force <- F
 
         if(is.null(response$urls)) {
@@ -499,20 +501,8 @@ taiga2.cache.dataset.version <- function(data.dir, data.id, data.name, data.vers
     }
 }
 
-load.from.taiga2 <- function(data.id = NULL,
-                            data.name = NULL,
-                            data.version = NULL,
-                            transpose = FALSE,
-                            data.dir = "~/.taiga",
-                            force.taiga = FALSE,
-                            taiga.url = "http://datasci-dev:8999",
-                            cache.id = FALSE,
-                            no.save = FALSE,
-                            quiet = FALSE,
-                            data.file = NULL,
-                            force.convert=F) {
-
-
+taiga2.resolve.id <- function(data.id, data.name, data.version, data.dir,
+force.taiga, taiga.url, cache.id, quiet, data.file, force.convert, no.save) {
     # make sure only data.id or data.name is provided
     if(!is.null(data.id)) {
         dataset.description <- data.id
@@ -620,6 +610,91 @@ load.from.taiga2 <- function(data.id = NULL,
         data.file <- response$datafile_name
     }
 
+    return( list(data.id=data.id, data.name=data.name,
+        data.version=data.version, data.file=data.file))
+}
+
+#' Download a "raw" file to cache directory.
+#' @return the file path to the downloaded file
+#' @export download.raw.from.taiga
+download.raw.from.taiga <- function(data.id = NULL,
+                            data.name = NULL,
+                            data.version = NULL,
+                            data.dir = "~/.taiga",
+                            force.taiga = FALSE,
+                            taiga.url = getOption("default.taiga.url",
+                                "https://cds.team/taiga"),
+                            quiet = FALSE,
+                            data.file = NULL) {
+    result <- taiga2.resolve.id(data.id, data.name, data.version, data.dir,
+force.taiga, taiga.url, cache.id, quiet, data.file, FALSE, FALSE)
+    if(is.null(result)) {
+        return(NULL)
+    }
+
+    data.id <- result$data.id
+    data.name <- result$data.name
+    data.version <- result$data.version
+    data.file <- result$data.file
+
+    stopifnot(!is.null(data.id))
+    stopifnot(!is.null(data.name))
+    stopifnot(!is.null(data.version))
+    stopifnot(!is.null(data.file))
+
+    normalized.datafile.name <- normalize.name(data.file)
+    if(!is.null(data.id)) {
+        cached.file <- paste0(data.dir, '/', data.id, "_", normalized.datafile.name, ".idx")
+    } else {
+        stopifnot(!is.null(data.name) & !is.null(data.version))
+        cached.file <- paste0(data.dir, '/', data.name, "_", normalized.datafile.name, "_", data.version, ".idx")
+    }
+
+    if(!file.exists(cached.file)) {
+        result <- request.files.from.taiga2(data.id = data.id, data.name=data.name, data.version=data.version, data.file=data.file, taiga.url=taiga.url, force=FALSE,
+        token=token, format="raw")
+
+        stopifnot(length(result$filenames) == 1)
+        file.rename(result$filenames[[1]], cached.file)
+    }
+
+    return (cached.file)
+}
+
+load.from.taiga2 <- function(data.id = NULL,
+                            data.name = NULL,
+                            data.version = NULL,
+                            transpose = FALSE,
+                            data.dir = "~/.taiga",
+                            force.taiga = FALSE,
+                            taiga.url = "http://datasci-dev:8999",
+                            cache.id = FALSE,
+                            no.save = FALSE,
+                            quiet = FALSE,
+                            data.file = NULL,
+                            force.convert=F) {
+    if(!is.null(data.id)) {
+        dataset.description <- data.id
+    }
+    if(!is.null(data.name)) {
+        if(!is.null(data.version)) {
+            dataset.description <- paste0(data.name, " v", data.version, sep="")
+        } else {
+            dataset.description <- data.name
+        }
+    }
+
+    result <- taiga2.resolve.id(data.id, data.name, data.version, data.dir,
+force.taiga, taiga.url, cache.id, quiet, data.file, force.convert, no.save)
+    if(is.null(result)) {
+        return(NULL)
+    }
+
+    data.id <- result$data.id
+    data.name <- result$data.name
+    data.version <- result$data.version
+    data.file <- result$data.file
+
     stopifnot(!is.null(data.id))
     stopifnot(!is.null(data.name))
     stopifnot(!is.null(data.version))
@@ -634,7 +709,7 @@ load.from.taiga2 <- function(data.id = NULL,
     if(is.null(data)) {
         # if not in cache, pull and optionally store in cache
         cat("Could not find", dataset.description, "in cache, requesting from taiga...\n")
-        result <- request.rds.from.taiga2(data.id = data.id, data.name=data.name, data.version=data.version, data.file=data.file, taiga.url=taiga.url, force=force.convert, token=token)
+        result <- request.files.from.taiga2(data.id = data.id, data.name=data.name, data.version=data.version, data.file=data.file, taiga.url=taiga.url, force=force.convert, token=token)
 
         data <- load.from.multiple.rds(result$filenames)
 
