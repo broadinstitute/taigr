@@ -293,6 +293,7 @@ make.id.source <- function(taiga.url, data.id) {
 
 #### TAIGA2 methods below
 
+
 taiga2.get.datafile <- function(taiga.url, data.id, data.name, data.version, data.file, force, format, token) {
     stopifnot(length(token) == 1)
 
@@ -580,6 +581,17 @@ force.taiga, taiga.url, cache.id, quiet, data.file, force.convert, no.save, toke
         data.name <- response$dataset$permanames[1]
         data.id <- response$datasetVersion$id
         data.version <- response$datasetVersion$version
+
+        # Get the state of the datasetVersion
+        data.state <- response$datasetVersion$state
+        data.reason_state <- response$datasetVersion$reason_state
+
+        if(data.state == 'deprecated'){
+            message = paste("This dataset version is deprecated. Please use with caution. Reason for deprecation:",
+                            data.reason_state,
+                            sep = "\n\t")
+            warning(message)
+        }
 
         # now look for the file within the selected version
         if(is.null(data.file)) {
