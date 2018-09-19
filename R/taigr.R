@@ -293,6 +293,21 @@ make.id.source <- function(taiga.url, data.id) {
 
 #### TAIGA2 methods below
 
+have_access_to_taiga <- function(){
+    have_access <- FALSE
+    tryCatch(
+        {
+            response <- httr::GET("https://cds.team/taiga", httr::timeout(1))
+            if(response$status_code != 503){
+                have_access <- TRUE
+            }
+        },
+        error = function(e){
+            have_access <- FALSE
+        }
+    )
+    return(have_access)
+}
 
 taiga2.get.datafile <- function(taiga.url, data.id, data.name, data.version, data.file, force, format, token) {
     stopifnot(length(token) == 1)
@@ -559,7 +574,27 @@ force.taiga, taiga.url, cache.id, quiet, data.file, force.convert, no.save, toke
         # if it's possible to rely on the cache go that route.  (Only possible when we're asking for a specific version, not latest version)
         response <- NULL
         if(!force.taiga && !force.convert) {
+            # We update the dataset version metadata if we have access to internet
+            response_from_website <- NULL
+            if(have_access_to_taiga()){
+                response_from_website <- taiga2.get.dataset.version(taiga.url, data.id, data.name, data.version, token)
+                if(response_from_website$http_status == "404") {
+                    warning("No such dataset, load.from.taiga returning NULL")
+                    return(NULL)
+                } else if(response_from_website$http_status != "200") {
+                    stop(paste0("Request for dataset failed, status: ", response_from_website$status))
+                }
+            }
+            else{
+                warning("You are in offline mode, please be aware that you might be out of sync with the state of the dataset version (deprecatio")
+            }
             response <- taiga2.get.cached.dataset.version(data.dir, data.id, data.name, data.version)
+
+            # Update dataset version state based on website if not NULL
+            if(!is.null(response_from_website)){
+                response$datasetVersion$state <- response_from_website$datasetVersion$state
+                response$datasetVersion$reason_state <- response_from_website$datasetVersion$reason_state
+            }
         }
 
         # if could not get from cache, contact taiga
