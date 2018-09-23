@@ -536,6 +536,7 @@ read.token.file <- function(data.dir) {
 
 taiga2.resolve.id <- function(data.id, data.name, data.version, data.dir,
 force.taiga, taiga.url, cache.id, quiet, data.file, force.convert, no.save, token) {
+    browser()
     # make sure only data.id or data.name is provided
     if(!is.null(data.id)) {
         dataset.description <- data.id
@@ -589,12 +590,6 @@ force.taiga, taiga.url, cache.id, quiet, data.file, force.convert, no.save, toke
                 warning("You are in offline mode, please be aware that you might be out of sync with the state of the dataset version (deprecatio")
             }
             response <- taiga2.get.cached.dataset.version(data.dir, data.id, data.name, data.version)
-
-            # Update dataset version state based on website if not NULL
-            if(!is.null(response_from_website)){
-                response$datasetVersion$state <- response_from_website$datasetVersion$state
-                response$datasetVersion$reason_state <- response_from_website$datasetVersion$reason_state
-            }
         }
 
         # if could not get from cache, contact taiga
@@ -610,6 +605,12 @@ force.taiga, taiga.url, cache.id, quiet, data.file, force.convert, no.save, toke
             # if we allow caching, now save it
             if(!no.save) {
                 taiga2.cache.dataset.version(data.dir, data.id, data.name, data.version, response)
+            }
+        } else {
+            # Update dataset version state based on website if not NULL
+            if(!is.null(response_from_website)){
+                response$datasetVersion$state <- response_from_website$datasetVersion$state
+                response$datasetVersion$reason_state <- response_from_website$datasetVersion$reason_state
             }
         }
 
