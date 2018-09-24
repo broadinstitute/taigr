@@ -536,7 +536,6 @@ read.token.file <- function(data.dir) {
 
 taiga2.resolve.id <- function(data.id, data.name, data.version, data.dir,
 force.taiga, taiga.url, cache.id, quiet, data.file, force.convert, no.save, token) {
-    browser()
     # make sure only data.id or data.name is provided
     if(!is.null(data.id)) {
         dataset.description <- data.id
