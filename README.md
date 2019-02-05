@@ -2,6 +2,13 @@
 
 Light weight R package for loading datasets from taiga. Conveniently caches data to your hard disk.
 
+## Token set up
+
+First, you need to get your authorization token so the client library can make requests on your behalf. Go to https://cds.team/taiga/token/ and click on the "Copy" button to copy your token. Paste your token in a file at `~/.taiga/token`.
+```
+mkdir ~/.taiga/
+echo YOUR_TOKEN_HERE > ~/.taiga/token
+```
 
 ## Installation
 To install the last 'released' version:
