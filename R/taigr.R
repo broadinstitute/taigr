@@ -396,7 +396,7 @@ format, token)
     filenames <- sapply(response$urls, function(url) {
         message(paste0("Downloading ", url," ..."))
         dest <- tempfile()
-        httr::GET(url, httr::write_disk(dest, overwrite=TRUE))
+        httr::GET(url, httr::write_disk(dest, overwrite=TRUE), httr::progress())
         # leaving off method results in 403 error (??)
         #download.file(url, dest, method='curl')
         dest
