@@ -620,14 +620,29 @@ force.taiga, taiga.url, cache.id, quiet, data.file, force.convert, no.save, toke
         # Get the state of the datasetVersion
         data.state <- response$datasetVersion$state
         data.reason_state <- response$datasetVersion$reason_state
-        print(data.state)
+
         if(data.state == 'deprecated'){
             message = paste("This dataset version is deprecated. Please use with caution. Reason for deprecation:",
                             data.reason_state,
                             sep = "\n\t")
             warning(message)
         } else if (data.state == 'deleted') {
-            # TODO: Remove data from cache
+            # Not show warnings
+            oldw <- getOption("warn")
+            options(warn = -1)
+
+            # Removing data from cache
+            # TODO: Currently removing all data from the dataset. Should only remove data from the specific dataset version
+            pattern_remove <- paste0(data.name, '_', '*')
+            to_delete <- dir(path=paste0(data.dir, '/'), pattern=pattern_remove)
+
+            path_file_remove <- paste(data.dir, to_delete, sep='/')
+            file.remove(path_file_remove)
+
+            # Restore warnings
+            options(warn = oldw)
+
+            # Stop program and notify user
             stop("This version of the dataset has been deleted. Contact its maintainer for more information.")
         }
 
