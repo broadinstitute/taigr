@@ -586,7 +586,7 @@ force.taiga, taiga.url, cache.id, quiet, data.file, force.convert, no.save, toke
                 }
             }
             else{
-                warning("You are in offline mode, please be aware that you might be out of sync with the state of the dataset version (deprecatio")
+                warning("You are in offline mode, please be aware that you might be out of sync with the state of the dataset version (deprecation)")
             }
             response <- taiga2.get.cached.dataset.version(data.dir, data.id, data.name, data.version)
         }
@@ -620,12 +620,15 @@ force.taiga, taiga.url, cache.id, quiet, data.file, force.convert, no.save, toke
         # Get the state of the datasetVersion
         data.state <- response$datasetVersion$state
         data.reason_state <- response$datasetVersion$reason_state
-
+        print(data.state)
         if(data.state == 'deprecated'){
             message = paste("This dataset version is deprecated. Please use with caution. Reason for deprecation:",
                             data.reason_state,
                             sep = "\n\t")
             warning(message)
+        } else if (data.state == 'deleted') {
+            # TODO: Remove data from cache
+            stop("This version of the dataset has been deleted. Contact its maintainer for more information.")
         }
 
         # now look for the file within the selected version
