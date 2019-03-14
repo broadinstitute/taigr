@@ -843,7 +843,7 @@ get_agnostic_data <- function(data.file,
                               token=token,
                               dict_filenames_data) {
     filename <- data.file$name
-    if (data.file$allowed_conversion_type  == 'raw') {
+    if (data.file$allowed_conversion_type[1]  == 'raw') {
         warning(paste(filename, 'is raw. You will have a local path as data'))
 
         data <- download.raw.from.taiga(data.name = dataset.name,
@@ -865,7 +865,7 @@ get_agnostic_data <- function(data.file,
 }
 
 #' Function to retrieve all the data available in a specific datasetVersion
-#' @param dataset.id DatasetVersion id
+#' @param datasetVersion.id DatasetVersion id
 #' @param dataset.name Permaname of the dataset we want to retrieve data from
 #' @param dataset.version Version of the dataset
 #' @param transpose Will transpose all the matrices
@@ -880,7 +880,7 @@ get_agnostic_data <- function(data.file,
 #' @importFrom plyr llply
 #' @import hash
 #' @export
-load.all.datafiles.from.taiga <- function(dataset.id = NULL,
+load.all.datafiles.from.taiga <- function(datasetVersion.id = NULL,
                                           dataset.name = NULL,
                                           dataset.version = NULL,
                                           transpose = FALSE,
@@ -893,8 +893,8 @@ load.all.datafiles.from.taiga <- function(dataset.id = NULL,
                                           force.convert=F) {
     # TODO: Use the cache, currently it redownload everytime
     # For each files found, use load.from.taiga2 if not raw (or download.raw.from.taiga if options is asked)
-    if(!is.null(dataset.id)) {
-        dataset.description <-dataset.id
+    if(!is.null(datasetVersion.id)) {
+        dataset.description <-datasetVersion.id
     }
     if(!is.null(dataset.name)) {
         if(!is.null(dataset.version)) {
@@ -907,23 +907,23 @@ load.all.datafiles.from.taiga <- function(dataset.id = NULL,
     token <- read.token.file(cache.dir)
 
     # resolve.id chunks
-    if(!is.null(dataset.id)) {
-        dataset.description <- dataset.id
+    if(!is.null(datasetVersion.id)) {
+        dataset.description <- datasetVersion.id
         stopifnot(is.null(dataset.version) & is.null(dataset.name))
 
         # does data.id include a filename?
-        index.of.slash <- regexpr("/", dataset.id)
+        index.of.slash <- regexpr("/", datasetVersion.id)
         if(index.of.slash >= 1) {
-            # if so, we want to split off the filename from the dataset.id
+            # if so, we want to split off the filename from the datasetVersion.id
             stopifnot(is.null(data.file))
-            data.file <- substring(dataset.id, index.of.slash+1)
-            dataset.id <- substring(dataset.id, 1, index.of.slash-1)
+            data.file <- substring(datasetVersion.id, index.of.slash+1)
+            datasetVersion.id <- substring(datasetVersion.id, 1, index.of.slash-1)
         }
 
         # now, data.id may be a real id, or it may be a permaname + "." + version number
-        if(length(grep("[^.]+\\.\\d+", dataset.id)) == 1) {
-            id.parts <- strsplit(dataset.id, "\\.")[[1]]
-            dataset.id <- NULL
+        if(length(grep("[^.]+\\.\\d+", datasetVersion.id)) == 1) {
+            id.parts <- strsplit(datasetVersion.id, "\\.")[[1]]
+            datasetVersion.id <- NULL
             dataset.name <- id.parts[1]
             dataset.version <- as.numeric(id.parts[2])
         }
@@ -937,12 +937,12 @@ load.all.datafiles.from.taiga <- function(dataset.id = NULL,
         } else {
             dataset.description <- dataset.name
         }
-        stopifnot(is.null(dataset.id))
+        stopifnot(is.null(datasetVersion.id))
     }
 
-    response <- taiga2.get.dataset.version(taiga.url, dataset.id, dataset.name, dataset.version, token)
+    response <- taiga2.get.dataset.version(taiga.url, datasetVersion.id, dataset.name, dataset.version, token)
     if(!no.save) {
-        taiga2.cache.dataset.version(cache.dir, dataset.id, dataset.name, dataset.version, response)
+        taiga2.cache.dataset.version(cache.dir, datasetVersion.id, dataset.name, dataset.version, response)
     }
 
     dataset.name <- response$dataset$permanames[1]
