@@ -89,7 +89,7 @@ pretty.print.taiga.info <- function(info) {
 #' datasets <- load.all.from.taiga(datasets.info, transpose=TRUE)
 #' @importFrom plyr llply
 #' @export
-load.all.datasets.from.taiga <- function(info, ...) {
+load.all.from.taiga <- function(info, ...) {
 
     info <- llply(info, function(i) {
         c(i, list(...))
@@ -833,6 +833,7 @@ token)
 #' @param token Path of the location of the token file containing the Taiga token of the user
 #' @param dict_filenames_data Hash which is going to contain the data in the form `filename`: `data`
 #' @return This function does not return anything, but mutate a hash object
+#' @import hash
 get_agnostic_data <- function(data.file,
                               datasetVersion.id,
                               dataset.name,
@@ -871,16 +872,19 @@ get_agnostic_data <- function(data.file,
 #' @param data.dir Path to the directory where to put your data in. !Not recommended to modify this
 #' @param force.taiga Boolean to force the download of the data from Taiga instead of using the cache (if you modified the data for example)
 #' @param taiga.url Url to taiga. !Not recommended to change this
-#' @param cache.id
+#' @param cache.id Id of the cache used to store the file
 #' @param no.save Boolean to not put the file in cache
 #' @param taiga.api.version Version of the Taiga api to use. !Not receommended to change this
 #' @param force.convert Boolean to force a new conversion of the data. Might be useful if the conversion has been interrupted
 #' @return Hash table of the form `filename`: `data`
-load.all.datafiles.from.taiga <- function(data.id = NULL,
-                                          data.name = NULL,
-                                          data.version = NULL,
+#' @importFrom plyr llply
+#' @import hash
+#' @export
+load.all.datafiles.from.taiga <- function(dataset.id = NULL,
+                                          dataset.name = NULL,
+                                          dataset.version = NULL,
                                           transpose = FALSE,
-                                          data.dir = "~/.taiga",
+                                          cache.dir = "~/.taiga",
                                           force.taiga = FALSE,
                                           taiga.url = getOption("default.taiga.url", "https://cds.team/taiga"),
                                           cache.id = FALSE,
@@ -889,23 +893,23 @@ load.all.datafiles.from.taiga <- function(data.id = NULL,
                                           force.convert=F) {
     # TODO: Use the cache, currently it redownload everytime
     # For each files found, use load.from.taiga2 if not raw (or download.raw.from.taiga if options is asked)
-    if(!is.null(data.id)) {
-        dataset.description <- data.id
+    if(!is.null(dataset.id)) {
+        dataset.description <-dataset.id
     }
     if(!is.null(data.name)) {
         if(!is.null(data.version)) {
             dataset.description <- paste0(data.name, " v", data.version, sep="")
         } else {
-            dataset.description <- data.name
+            dataset.description <- dataset.name
         }
     }
 
     token <- read.token.file(data.dir)
 
     # resolve.id chunks
-    if(!is.null(data.id)) {
-        dataset.description <- data.id
-        stopifnot(is.null(data.version) & is.null(data.name))
+    if(!is.null(dataset.id)) {
+        dataset.description <- dataset.id
+        stopifnot(is.null(data.version) & is.null(dataset.name))
 
         # does data.id include a filename?
         index.of.slash <- regexpr("/", data.id)
@@ -920,25 +924,25 @@ load.all.datafiles.from.taiga <- function(data.id = NULL,
         if(length(grep("[^.]+\\.\\d+", data.id)) == 1) {
             id.parts <- strsplit(data.id, "\\.")[[1]]
             data.id <- NULL
-            data.name <- id.parts[1]
+            dataset.name <- id.parts[1]
             data.version <- as.numeric(id.parts[2])
         }
 
         # maybe put in a warning here if data.id looks like it is actually a permaname?
     }
 
-    if(!is.null(data.name)) {
+    if(!is.null(dataset.name)) {
         if(!is.null(data.version)) {
-            dataset.description <- paste0(data.name, " v", data.version, sep="")
+            dataset.description <- paste0(dataset.name, " v", data.version, sep="")
         } else {
-            dataset.description <- data.name
+            dataset.description <- dataset.name
         }
         stopifnot(is.null(data.id))
     }
 
-    response <- taiga2.get.dataset.version(taiga.url, data.id, data.name, data.version, token)
+    response <- taiga2.get.dataset.version(taiga.url, data.id, dataset.name, data.version, token)
     if(!no.save) {
-        taiga2.cache.dataset.version(data.dir, data.id, data.name, data.version, response)
+        taiga2.cache.dataset.version(data.dir, data.id, dataset.name, data.version, response)
     }
 
     dataset.name <- response$dataset$permanames[1]
