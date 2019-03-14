@@ -12,7 +12,15 @@ load.all.datafiles.from.taiga(dataset.id = NULL, dataset.name = NULL,
   force.convert = F)
 }
 \arguments{
+\item{dataset.id}{DatasetVersion id}
+
+\item{dataset.name}{Permaname of the dataset we want to retrieve data from}
+
+\item{dataset.version}{Version of the dataset}
+
 \item{transpose}{Will transpose all the matrices}
+
+\item{cache.dir}{Path to the directory where to put your data in. !Not recommended to modify this}
 
 \item{force.taiga}{Boolean to force the download of the data from Taiga instead of using the cache (if you modified the data for example)}
 
@@ -25,14 +33,6 @@ load.all.datafiles.from.taiga(dataset.id = NULL, dataset.name = NULL,
 \item{taiga.api.version}{Version of the Taiga api to use. !Not receommended to change this}
 
 \item{force.convert}{Boolean to force a new conversion of the data. Might be useful if the conversion has been interrupted}
-
-\item{data.id}{DatasetVersion id}
-
-\item{data.name}{Permaname of the dataset we want to retrieve data from}
-
-\item{data.version}{Version of the dataset}
-
-\item{data.dir}{Path to the directory where to put your data in. !Not recommended to modify this}
 }
 \value{
 Hash table of the form `filename`: `data`

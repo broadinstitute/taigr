@@ -865,11 +865,11 @@ get_agnostic_data <- function(data.file,
 }
 
 #' Function to retrieve all the data available in a specific datasetVersion
-#' @param data.id DatasetVersion id
-#' @param data.name Permaname of the dataset we want to retrieve data from
-#' @param data.version Version of the dataset
+#' @param dataset.id DatasetVersion id
+#' @param dataset.name Permaname of the dataset we want to retrieve data from
+#' @param dataset.version Version of the dataset
 #' @param transpose Will transpose all the matrices
-#' @param data.dir Path to the directory where to put your data in. !Not recommended to modify this
+#' @param cache.dir Path to the directory where to put your data in. !Not recommended to modify this
 #' @param force.taiga Boolean to force the download of the data from Taiga instead of using the cache (if you modified the data for example)
 #' @param taiga.url Url to taiga. !Not recommended to change this
 #' @param cache.id Id of the cache used to store the file
@@ -896,53 +896,53 @@ load.all.datafiles.from.taiga <- function(dataset.id = NULL,
     if(!is.null(dataset.id)) {
         dataset.description <-dataset.id
     }
-    if(!is.null(data.name)) {
-        if(!is.null(data.version)) {
-            dataset.description <- paste0(data.name, " v", data.version, sep="")
+    if(!is.null(dataset.name)) {
+        if(!is.null(dataset.version)) {
+            dataset.description <- paste0(dataset.name, " v", dataset.version, sep="")
         } else {
             dataset.description <- dataset.name
         }
     }
 
-    token <- read.token.file(data.dir)
+    token <- read.token.file(cache.dir)
 
     # resolve.id chunks
     if(!is.null(dataset.id)) {
         dataset.description <- dataset.id
-        stopifnot(is.null(data.version) & is.null(dataset.name))
+        stopifnot(is.null(dataset.version) & is.null(dataset.name))
 
         # does data.id include a filename?
-        index.of.slash <- regexpr("/", data.id)
+        index.of.slash <- regexpr("/", dataset.id)
         if(index.of.slash >= 1) {
-            # if so, we want to split off the filename from the data.id
+            # if so, we want to split off the filename from the dataset.id
             stopifnot(is.null(data.file))
-            data.file <- substring(data.id, index.of.slash+1)
-            data.id <- substring(data.id, 1, index.of.slash-1)
+            data.file <- substring(dataset.id, index.of.slash+1)
+            dataset.id <- substring(dataset.id, 1, index.of.slash-1)
         }
 
         # now, data.id may be a real id, or it may be a permaname + "." + version number
-        if(length(grep("[^.]+\\.\\d+", data.id)) == 1) {
-            id.parts <- strsplit(data.id, "\\.")[[1]]
-            data.id <- NULL
+        if(length(grep("[^.]+\\.\\d+", dataset.id)) == 1) {
+            id.parts <- strsplit(dataset.id, "\\.")[[1]]
+            dataset.id <- NULL
             dataset.name <- id.parts[1]
-            data.version <- as.numeric(id.parts[2])
+            dataset.version <- as.numeric(id.parts[2])
         }
 
         # maybe put in a warning here if data.id looks like it is actually a permaname?
     }
 
     if(!is.null(dataset.name)) {
-        if(!is.null(data.version)) {
-            dataset.description <- paste0(dataset.name, " v", data.version, sep="")
+        if(!is.null(dataset.version)) {
+            dataset.description <- paste0(dataset.name, " v", dataset.version, sep="")
         } else {
             dataset.description <- dataset.name
         }
-        stopifnot(is.null(data.id))
+        stopifnot(is.null(dataset.id))
     }
 
-    response <- taiga2.get.dataset.version(taiga.url, data.id, dataset.name, data.version, token)
+    response <- taiga2.get.dataset.version(taiga.url, dataset.id, dataset.name, dataset.version, token)
     if(!no.save) {
-        taiga2.cache.dataset.version(data.dir, data.id, dataset.name, data.version, response)
+        taiga2.cache.dataset.version(cache.dir, dataset.id, dataset.name, dataset.version, response)
     }
 
     dataset.name <- response$dataset$permanames[1]
