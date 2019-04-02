@@ -123,7 +123,7 @@ load.from.taiga <- function(data.id = NULL,
                             data.name = NULL,
                             data.version = NULL,
                             transpose = FALSE,
-                            data.dir = "~/.taiga",
+                            data.dir = path.expand("~/.taiga"),
                             force.taiga = FALSE,
                             taiga.url = getOption("default.taiga.url",
                                 "https://cds.team/taiga"),
@@ -503,13 +503,13 @@ taiga2.cache.dataset.version <- function(data.dir, data.id, data.name, data.vers
 
 read.token.file <- function(data.dir) {
     find.first.token <- function() {
-        possibilities <- c(".taiga-token", paste0(data.dir, "/token"))
+        possibilities <- c(file.path(getwd(), ".taiga-token"), file.path(data.dir, "token"))
         for (token.filename in possibilities) {
             if(file.exists(token.filename)) {
                 return(token.filename)
             }
         }
-        stop(paste0("Could not find token to use for authentication!  Please put your user token into one of: ", paste(collapse=possibilities)))
+        stop(paste0("Could not find token to use for authentication!  Please put your user token into one of: ", paste(possibilities, collapse=", ")))
     }
 
     token.filename <- find.first.token()
