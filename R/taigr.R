@@ -757,6 +757,13 @@ load.from.taiga2 <- function(data.id = NULL,
                             data.file = NULL,
                             force.convert=F) {
 
+    if (! (force.taiga && no.save)) {
+        if (! file.exists(data.dir)) {
+            print("B")
+            dir.create(data.dir)
+        }
+        stopifnot(file.exists(data.dir))
+    }
 
     if(!is.null(data.id)) {
         dataset.description <- data.id
