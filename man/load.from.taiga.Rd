@@ -4,10 +4,11 @@
 \alias{load.from.taiga}
 \title{Load data from taiga}
 \usage{
-load.from.taiga(data.id = NULL, data.name = NULL, data.version = NULL,
-  transpose = FALSE, data.dir = "~/.taiga", force.taiga = FALSE,
-  taiga.url = getOption("default.taiga.url", "https://cds.team/taiga"),
-  cache.id = FALSE, no.save = FALSE, quiet = FALSE,
+load.from.taiga(data.id = NULL, data.name = NULL,
+  data.version = NULL, transpose = FALSE, data.dir = "~/.taiga",
+  force.taiga = FALSE, taiga.url = getOption("default.taiga.url",
+  "https://cds.team/taiga"), cache.id = FALSE, no.save = FALSE,
+  quiet = FALSE,
   taiga.api.version = getOption("default.taiga.api.version", 2),
   force.convert = F, data.file = NULL)
 }

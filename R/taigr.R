@@ -96,11 +96,13 @@ load.all.from.taiga <- function(info, ...) {
     })
 
     dataset.list <- llply(info, function(i) {
-        do.call(load.from.taiga, i, )
+        do.call(load.from.taiga, i)
     })
 
     return(dataset.list)
 }
+
+
 
 #' Load data from taiga
 #'
@@ -293,6 +295,22 @@ make.id.source <- function(taiga.url, data.id) {
 
 #### TAIGA2 methods below
 
+have_access_to_taiga <- function(){
+    have_access <- FALSE
+    tryCatch(
+        {
+            response <- httr::GET("https://cds.team/taiga", httr::timeout(1))
+            if(response$status_code != 503){
+                have_access <- TRUE
+            }
+        },
+        error = function(e){
+            have_access <- FALSE
+        }
+    )
+    return(have_access)
+}
+
 taiga2.get.datafile <- function(taiga.url, data.id, data.name, data.version, data.file, force, format, token) {
     stopifnot(length(token) == 1)
 
@@ -378,9 +396,9 @@ format, token)
     }
 
     filenames <- sapply(response$urls, function(url) {
-        message(paste0("Downloading ", url," ..."))
+        message(paste0("Downloading ", data.name, "/v", data.version, "/", data.file," ..."))
         dest <- tempfile()
-        httr::GET(url, httr::write_disk(dest, overwrite=TRUE))
+        httr::GET(url, httr::write_disk(dest, overwrite=TRUE), httr::progress())
         # leaving off method results in 403 error (??)
         #download.file(url, dest, method='curl')
         dest
@@ -558,6 +576,20 @@ force.taiga, taiga.url, cache.id, quiet, data.file, force.convert, no.save, toke
         # if it's possible to rely on the cache go that route.  (Only possible when we're asking for a specific version, not latest version)
         response <- NULL
         if(!force.taiga && !force.convert) {
+            # We update the dataset version metadata if we have access to internet
+            response_from_website <- NULL
+            if(have_access_to_taiga()){
+                response_from_website <- taiga2.get.dataset.version(taiga.url, data.id, data.name, data.version, token)
+                if(response_from_website$http_status == "404") {
+                    warning("No such dataset, load.from.taiga returning NULL")
+                    return(NULL)
+                } else if(response_from_website$http_status != "200") {
+                    stop(paste0("Request for dataset failed, status: ", response_from_website$status))
+                }
+            }
+            else{
+                warning("You are in offline mode, please be aware that you might be out of sync with the state of the dataset version (deprecation)")
+            }
             response <- taiga2.get.cached.dataset.version(data.dir, data.id, data.name, data.version)
         }
 
@@ -575,14 +607,58 @@ force.taiga, taiga.url, cache.id, quiet, data.file, force.convert, no.save, toke
             if(!no.save) {
                 taiga2.cache.dataset.version(data.dir, data.id, data.name, data.version, response)
             }
+        } else {
+            # Update dataset version state based on website if not NULL
+            if(!is.null(response_from_website)){
+                response$datasetVersion$state <- response_from_website$datasetVersion$state
+                response$datasetVersion$reason_state <- response_from_website$datasetVersion$reason_state
+            }
         }
 
         data.name <- response$dataset$permanames[1]
         data.id <- response$datasetVersion$id
         data.version <- response$datasetVersion$version
 
+        # Get the state of the datasetVersion
+        data.state <- response$datasetVersion$state
+        data.reason_state <- response$datasetVersion$reason_state
+
+        if(data.state == 'deprecated'){
+            message = paste("This dataset version is deprecated. Please use with caution. Reason for deprecation:",
+                            data.reason_state,
+                            sep = "\n\t")
+            warning(message)
+        } else if (data.state == 'deleted') {
+            # Not show warnings
+            oldw <- getOption("warn")
+            options(warn = -1)
+
+            # Removing data from cache
+            # TODO: Currently removing all data from the dataset. Should only remove data from the specific dataset version
+            # Remove data.name based
+            pattern_remove <- paste0(data.name, '_', '*')
+            to_delete <- dir(path=paste0(data.dir, '/'), pattern=pattern_remove)
+
+            path_file_remove <- paste(data.dir, to_delete, sep='/')
+            file.remove(path_file_remove)
+
+            # Remove data.id based
+            pattern_remove <- paste0(data.id, '_', '*')
+            to_delete <- dir(path=paste0(data.dir, '/'), pattern=pattern_remove)
+
+            path_file_remove <- paste(data.dir, to_delete, sep='/')
+            file.remove(path_file_remove)
+
+            # Restore warnings
+            options(warn = oldw)
+
+            # Stop program and notify user
+            stop("This version of the dataset has been deleted. Contact its maintainer for more information.")
+        }
+
         # now look for the file within the selected version
         if(is.null(data.file)) {
+            warning("No filename passed, getting the first one by default")
             data.file <- response$datasetVersion$datafiles$name[1]
         } else {
             found <- FALSE
@@ -680,6 +756,8 @@ load.from.taiga2 <- function(data.id = NULL,
                             quiet = FALSE,
                             data.file = NULL,
                             force.convert=F) {
+
+
     if(!is.null(data.id)) {
         dataset.description <- data.id
     }
@@ -744,3 +822,151 @@ token)
     }
 }
 
+#' Get all type of data and set them by `filename` in the hash passed in parameter
+#' `get_agnostic_data` doesn't return anything, the hash is mutated
+#' @param data.file Datafile object received from taiga (not the data)
+#' @param datasetVersion.id Id of the datasetVersion
+#' @param dataset.name Name of the dataset
+#' @param dataset.version Version number of the datasetVersion
+#' @param taiga.url Url to contact Taiga
+#' @param force Boolean to ask Taiga if it needs to do the conversion again (in case of failure or interruption)
+#' @param token Path of the location of the token file containing the Taiga token of the user
+#' @param dict_filenames_data Hash which is going to contain the data in the form `filename`: `data`
+#' @return This function does not return anything, but mutate a hash object
+#' @import hash
+get_agnostic_data <- function(data.file,
+                              datasetVersion.id,
+                              dataset.name,
+                              dataset.version,
+                              taiga.url,
+                              force=FALSE,
+                              token=token,
+                              dict_filenames_data) {
+    filename <- data.file$name
+    if (data.file$allowed_conversion_type[1]  == 'raw') {
+        warning(paste(filename, 'is raw. You will have a local path as data'))
+
+        data <- download.raw.from.taiga(data.name = dataset.name,
+                                        data.version = dataset.version,
+                                        force.taiga = force,
+                                        taiga.url = taiga.url,
+                                        data.file = filename)
+    } else {
+        result <- request.files.from.taiga2(data.id=datasetVersion.id,
+                                            data.name = dataset.name,
+                                            data.version=dataset.version,
+                                            data.file=filename,
+                                            taiga.url=taiga.url,
+                                            force=force,
+                                            token=token)
+        data <- load.from.multiple.rds(result$filenames)
+    }
+    .set(dict_filenames_data, keys=c(filename), values=data)
+}
+
+#' Function to retrieve all the data available in a specific datasetVersion
+#' @param datasetVersion.id DatasetVersion id
+#' @param dataset.name Permaname of the dataset we want to retrieve data from
+#' @param dataset.version Version of the dataset
+#' @param transpose Will transpose all the matrices
+#' @param cache.dir Path to the directory where to put your data in. !Not recommended to modify this
+#' @param force.taiga Boolean to force the download of the data from Taiga instead of using the cache (if you modified the data for example)
+#' @param taiga.url Url to taiga. !Not recommended to change this
+#' @param cache.id Id of the cache used to store the file
+#' @param no.save Boolean to not put the file in cache
+#' @param taiga.api.version Version of the Taiga api to use. !Not receommended to change this
+#' @param force.convert Boolean to force a new conversion of the data. Might be useful if the conversion has been interrupted
+#' @return Hash table of the form `filename`: `data`
+#' @importFrom plyr llply
+#' @import hash
+#' @export
+load.all.datafiles.from.taiga <- function(datasetVersion.id = NULL,
+                                          dataset.name = NULL,
+                                          dataset.version = NULL,
+                                          transpose = FALSE,
+                                          cache.dir = "~/.taiga",
+                                          force.taiga = FALSE,
+                                          taiga.url = getOption("default.taiga.url", "https://cds.team/taiga"),
+                                          cache.id = FALSE,
+                                          no.save = FALSE,
+                                          taiga.api.version=getOption("default.taiga.api.version", 2),
+                                          force.convert=F) {
+    # TODO: Use the cache, currently it redownload everytime
+    # For each files found, use load.from.taiga2 if not raw (or download.raw.from.taiga if options is asked)
+    if(!is.null(datasetVersion.id)) {
+        dataset.description <-datasetVersion.id
+    }
+    if(!is.null(dataset.name)) {
+        if(!is.null(dataset.version)) {
+            dataset.description <- paste0(dataset.name, " v", dataset.version, sep="")
+        } else {
+            dataset.description <- dataset.name
+        }
+    }
+
+    token <- read.token.file(cache.dir)
+
+    # resolve.id chunks
+    if(!is.null(datasetVersion.id)) {
+        dataset.description <- datasetVersion.id
+        stopifnot(is.null(dataset.version) & is.null(dataset.name))
+
+        # does data.id include a filename?
+        index.of.slash <- regexpr("/", datasetVersion.id)
+        if(index.of.slash >= 1) {
+            # if so, we want to split off the filename from the datasetVersion.id
+            stopifnot(is.null(data.file))
+            data.file <- substring(datasetVersion.id, index.of.slash+1)
+            datasetVersion.id <- substring(datasetVersion.id, 1, index.of.slash-1)
+        }
+
+        # now, data.id may be a real id, or it may be a permaname + "." + version number
+        if(length(grep("[^.]+\\.\\d+", datasetVersion.id)) == 1) {
+            id.parts <- strsplit(datasetVersion.id, "\\.")[[1]]
+            datasetVersion.id <- NULL
+            dataset.name <- id.parts[1]
+            dataset.version <- as.numeric(id.parts[2])
+        }
+
+        # maybe put in a warning here if data.id looks like it is actually a permaname?
+    }
+
+    if(!is.null(dataset.name)) {
+        if(!is.null(dataset.version)) {
+            dataset.description <- paste0(dataset.name, " v", dataset.version, sep="")
+        } else {
+            dataset.description <- dataset.name
+        }
+        stopifnot(is.null(datasetVersion.id))
+    }
+
+    response <- taiga2.get.dataset.version(taiga.url, datasetVersion.id, dataset.name, dataset.version, token)
+    if(!no.save) {
+        taiga2.cache.dataset.version(cache.dir, datasetVersion.id, dataset.name, dataset.version, response)
+    }
+
+    dataset.name <- response$dataset$permanames[1]
+    datasetVersion.id <- response$datasetVersion$id
+    dataset.version <- response$datasetVersion$version
+    data.files <- response$datasetVersion$datafiles
+
+    # Get the state of the datasetVersion
+    data.state <- response$datasetVersion$state
+    data.reason_state <- response$datasetVersion$reason_state
+
+    # TODO: Add deprecation and deletion management
+    # now look for the file within the selected version
+    dict_filenames_data <- hash()
+    # TODO: get_agnostic_data is mutating dict_filename_data. Might be cleaner to just return all_data and attribute to keys
+    all_data <- apply(data.files, 1, function(data.file){
+        get_agnostic_data(data.file=data.file,
+                          datasetVersion.id=datasetVersion.id,
+                          dataset.name=dataset.name,
+                          dataset.version=dataset.version,
+                          taiga.url=taiga.url,
+                          token=token,
+                          dict_filenames_data=dict_filenames_data)
+    })
+    # Use hash here
+    dict_filenames_data
+}

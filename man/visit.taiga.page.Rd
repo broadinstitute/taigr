@@ -4,8 +4,9 @@
 \alias{visit.taiga.page}
 \title{Visit Taiga page in web browser}
 \usage{
-visit.taiga.page(data.id = NULL, data.name = NULL, data.version = NULL,
-  taiga.url = getOption("default.taiga.url", "https://cds.team/taiga"),
+visit.taiga.page(data.id = NULL, data.name = NULL,
+  data.version = NULL, taiga.url = getOption("default.taiga.url",
+  "https://cds.team/taiga"),
   taiga.api.version = getOption("default.taiga.api.version", 2))
 }
 \arguments{
