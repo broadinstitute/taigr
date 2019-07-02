@@ -5,9 +5,8 @@
 \title{Get all type of data and set them by `filename` in the hash passed in parameter
 `get_agnostic_data` doesn't return anything, the hash is mutated}
 \usage{
-get_agnostic_data(data.file, datasetVersion.id, dataset.name,
-  dataset.version, taiga.url, force = FALSE, token = token,
-  dict_filenames_data)
+get_agnostic_data(data.file, datasetVersion.id, dataset.name, dataset.version,
+  taiga.url, force = FALSE, token = token, dict_filenames_data)
 }
 \arguments{
 \item{data.file}{Datafile object received from taiga (not the data)}

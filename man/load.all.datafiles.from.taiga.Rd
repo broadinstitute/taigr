@@ -4,11 +4,10 @@
 \alias{load.all.datafiles.from.taiga}
 \title{Function to retrieve all the data available in a specific datasetVersion}
 \usage{
-load.all.datafiles.from.taiga(datasetVersion.id = NULL,
-  dataset.name = NULL, dataset.version = NULL, transpose = FALSE,
-  cache.dir = "~/.taiga", force.taiga = FALSE,
-  taiga.url = getOption("default.taiga.url", "https://cds.team/taiga"),
-  cache.id = FALSE, no.save = FALSE,
+load.all.datafiles.from.taiga(datasetVersion.id = NULL, dataset.name = NULL,
+  dataset.version = NULL, transpose = FALSE, cache.dir = "~/.taiga",
+  force.taiga = FALSE, taiga.url = getOption("default.taiga.url",
+  "https://cds.team/taiga"), cache.id = FALSE, no.save = FALSE,
   taiga.api.version = getOption("default.taiga.api.version", 2),
   force.convert = F)
 }

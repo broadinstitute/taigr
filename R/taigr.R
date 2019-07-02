@@ -11,67 +11,6 @@
 #'
 NULL
 
-######## TAIGA1 methods
-
-#' Visit Taiga page in web browser
-#'
-#' @param data.id The dataset ID in taiga.
-#' @param data.name The dataset name in taiga.
-#' @param data.version The dataset version number in taiga.
-#' @param taiga.url Where is taiga?
-#' @return the full URL
-#' @export
-#'
-#'
-
-visit.taiga.page <- function(data.id = NULL,
-                            data.name = NULL,
-                            data.version = NULL,
-                            taiga.url = getOption("default.taiga.url",
-                                "https://cds.team/taiga"),
-                            taiga.api.version=getOption("default.taiga.api.version", 2)
-                            ) {
-
-    if (is.null(data.id) && is.null(data.name)) {
-        stop("Error: must supply either data.id or data.name")
-    }
-
-    if(taiga.api.version == 1) {
-        if (is.null(data.id)) {
-            data.id <- get.data.id(taiga.url = taiga.url,
-                                   data.name = data.name, data.version = data.version)
-        }
-
-        data.url <- paste(taiga.url, "/dataset/show/", data.id, sep="")
-    } else {
-        stopifnot(taiga.api.version == 2)
-
-        if (is.null(data.id)) {
-            data.url <- paste0(taiga.url, "/dataset/", data.name, "/", data.version )
-        } else {
-            data.url <- paste0(taiga.url, "/dataset/x/", data.id )
-        }
-    }
-
-    cat("opening", data.url)
-    browseURL(data.url)
-
-    return(data.url)
-}
-
-#' Prettily print taiga dataset info
-#' @usage pretting.print.taiga.info(info)
-#' @param info named list of arguments to load.from.taiga
-#' @return NULL
-#' @importFrom stringr str_replace
-#' @export pretty.print.taiga.info
-pretty.print.taiga.info <- function(info) {
-    info <- capture.output(str(info, no.list=T))
-    info <- str_replace(info, ":List of .*", "")
-    info <- str_replace(info, ": (num|chr|logi)",": ")
-    cat(info, sep="\n")
-}
-
 #' Load multiple datasets from taiga
 #'
 #' @param info named list of arguments to load.from.taiga
@@ -136,164 +75,10 @@ load.from.taiga <- function(data.id = NULL,
                             force.convert=F,
                             data.file=NULL) {
 
-    if(taiga.api.version!=1) {
-        return(load.from.taiga2(data.id=data.id, data.name=data.name, data.version=data.version, transpose=transpose, data.dir=data.dir, force.taiga=force.taiga, taiga.url=taiga.url, cache.id=cache.id, no.save=no.save, quiet=quiet, force=force.convert, data.file=data.file))
-    }
+    stopifnot(taiga.api.version!=1);
 
-    if(!is.null(data.file)) {
-        stop("Taiga1 does not support a non-null data.file parameter")
-    }
-
-    if (is.null(data.id) && is.null(data.name)) {
-        stop("Error: must supply either data.id or data.name")
-    }
-
-    if (! (force.taiga && no.save)) {
-        if (! file.exists(data.dir)) {
-            dir.create(data.dir)
-        }
-    }
-
-    if (is.null(data.name)) {
-        # data.name is not supplied
-        data <- load.using.id(data.dir, data.id, taiga.url, force.taiga, quiet)
-
-        if (!no.save) {
-            save.using.id(data, data.dir, data.id, quiet)
-        }
-    } else {
-        data.id <- NULL
-        if (is.null(data.version)) {
-            if (!cache.id) {
-                warning(paste("Warning: will only cache using id",
-                              "unless version number is supplied"))
-
-                cache.id <- TRUE
-            }
-            data.id <- get.data.id(taiga.url, data.name, data.version)
-            data <- load.using.id(data.dir, data.id,
-                                  taiga.url, force.taiga, quiet)
-        } else {
-            data <- load.using.name(data.dir, data.name, data.version,
-                                    taiga.url, force.taiga, quiet)
-        }
-
-        if (!no.save) {
-            if (cache.id) {
-                if (is.null(data.id)) {
-                    data.id <- get.data.id(taiga.url, data.name, data.version)
-                }
-                save.using.id(data, data.dir, data.id, quiet)
-            } else {
-                save.using.name(data, data.dir, data.name, data.version, quiet)
-            }
-        }
-    }
-
-    if (transpose) {
-        data <- t(data)
-    }
-
-    return(data)
+    return(load.from.taiga2(data.id=data.id, data.name=data.name, data.version=data.version, transpose=transpose, data.dir=data.dir, force.taiga=force.taiga, taiga.url=taiga.url, cache.id=cache.id, no.save=no.save, quiet=quiet, force=force.convert, data.file=data.file))
 }
-
-
-
-load.using.id <- function(data.dir, data.id, taiga.url, force.taiga, quiet) {
-
-    data.file <- make.id.file(data.dir, data.id)
-    data.source <- make.id.source(taiga.url, data.id)
-
-    if (!force.taiga && file.exists(data.file)) {
-        if (!quiet) message("Loading from disk\n",data.file)
-        load(data.file)
-    } else {
-        if (!quiet) message("Loading from Taiga\n",data.source)
-        load(url(data.source))
-    }
-    return(data)
-}
-
-
-load.using.name <- function(data.dir, data.name, data.version,
-                            taiga.url, force.taiga, quiet) {
-
-    data.file <- make.name.file(data.dir, data.name, data.version)
-    data.source <- make.name.source(taiga.url, data.name, data.version)
-
-    if (!force.taiga) {
-        if (file.exists(data.file)) {
-            if (!quiet) message("Loading from disk\n",data.file)
-            load(data.file)
-            return(data)
-        } else {
-            # get data.id and check if that file exists
-            data.id <- get.data.id(taiga.url, data.name, data.version)
-            data.file.id <- make.id.file(data.dir, data.id)
-            if (file.exists(data.file.id)) {
-                # if it does, load it
-                if (!quiet) message("Loading from disk\n",data.file.id)
-                load(data.file.id)
-                return(data)
-            }
-        }
-    }
-
-    if (!quiet) message("Loading from Taiga\n",data.source)
-    load(url(data.source))
-
-    return(data)
-}
-
-
-get.data.id <- function (taiga.url, data.name, data.version) {
-    source <- paste(taiga.url,
-                    "/rest/v0/namedDataset?fetch=id&format=rdata&name=",
-                    data.name,sep='');
-    if(!is.null(data.version)) {
-        source <- paste(source,"&version=",data.version,sep='')
-    }
-    data.id <- scan(source, what=character(), quiet=TRUE)
-}
-
-save.using.id <- function(data, data.dir, data.id, quiet) {
-    data.file <- make.id.file(data.dir, data.id)
-    if (!file.exists(data.file)) {
-        if (!quiet) message("Saving to disk",data.file)
-        save(data, file=data.file)
-    }
-}
-
-save.using.name <- function(data, data.dir, data.name, data.version, quiet) {
-    data.file <- make.name.file(data.dir, data.name, data.version)
-    if (!file.exists(data.file)) {
-        if (!quiet) message("Saving to disk\n",data.file)
-        save(data, file=data.file)
-    }
-}
-
-make.name.file <- function(data.dir, data.name, data.version) {
-    return(file.path(data.dir,
-                     paste(data.name,"_",data.version,".Rdata",sep="")))
-}
-
-make.name.source <- function(taiga.url, data.name, data.version) {
-    return(paste(taiga.url,
-                 "/rest/v0/namedDataset?fetch=content&format=rdata",
-                 "&name=", data.name,
-                 "&version=", data.version,sep=""))
-}
-
-make.id.file <- function(data.dir, data.id) {
-    return(file.path(data.dir,paste(data.id,".Rdata",sep="")))
-}
-
-make.id.source <- function(taiga.url, data.id) {
-    return(paste(taiga.url,
-                 "/rest/v0/datasets/",data.id,"?format=rdata", sep=''))
-}
-
-#### TAIGA2 methods below
 
 have_access_to_taiga <- function(){
     have_access <- FALSE
@@ -315,6 +100,7 @@ taiga2.get.datafile <- function(taiga.url, data.id, data.name, data.version, dat
     stopifnot(length(token) == 1)
 
     url <- paste0(taiga.url, "/api/datafile?format=", format)
+
     if(! is.null(data.id)) {
         url <- paste0(url, "&dataset_version_id=", data.id)
     } else {
@@ -323,6 +109,7 @@ taiga2.get.datafile <- function(taiga.url, data.id, data.name, data.version, dat
             url <- paste0(url, "&version=", RCurl::curlEscape(data.version))
         }
     }
+
     if(!is.null(data.file)) {
         url <- paste0(url, "&datafile_name=", RCurl::curlEscape(data.file))
     }
@@ -347,17 +134,6 @@ fetch.json <- function(url, token) {
     } else {
        response <- list()
     }
-
-#    h = RCurl::basicTextGatherer()
-#    response.json <- RCurl::getURL(url, headerfunction = h$update, httpheader = c(Authorization=paste0("Bearer ", token)), .mapUnicode=F)
-#    status_line <- h$value(NULL)[1]
-#    status <- as.integer(strsplit(status_line, " ")[[1]][2])
-#    cat("Status", status,"\n")
-#    if(status == 500) {
-#        stop("internal server error")
-#    }
-#
-#    response <- jsonlite::fromJSON(response.json)
 
     response$http_status <- status
 
@@ -438,7 +214,6 @@ save.to.taiga2.cache <- function(data.id, data.name, data.version, datafile.name
     saveRDS(data, paste0(data.dir, "/", data.file))
     message(paste0("Saved to cache as ", data.file))
 
-
     index.file.names <- c(
         paste0(data.dir, '/', data.id, "_", normalized.datafile.name, ".idx"),
         paste0(data.dir, '/', data.name, "_", normalized.datafile.name, "_", data.version, ".idx")
@@ -505,7 +280,7 @@ taiga2.get.cached.dataset.version <- function(data.dir, data.id, data.name, data
         fn <- paste0(data.dir, "/", data.name, "_", data.version, ".toc")
     }
     response <- NULL
-#    cat("checking for ", fn, "\n")
+
     if(file.exists(fn)) {
         cat("loading cached data version from ", fn, "\n")
         response <- readRDS(fn)
@@ -811,10 +586,10 @@ token)
             cat("Saving", dataset.description, "in cache (", result$data.id, result$datafile.name, ")...\n")
 #            print(result)
 #            cat("result ",is.null(result), "\n")
-            save.to.taiga2.cache(data.id=result$data.id,
-                                 data.name=result$data.name,
-                                 data.version=result$data.version,
-                                 datafile.name=result$datafile.name,
+            save.to.taiga2.cache(data.id=data.id,
+                                 data.name=data.name,
+                                 data.version=data.version,
+                                 datafile.name=data.file,
                                  data.dir=data.dir,
                                  data=data)
         }
