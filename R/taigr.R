@@ -385,6 +385,7 @@ force.taiga, taiga.url, cache.id, quiet, data.file, force.convert, no.save, toke
         } else {
             # Update dataset version state based on website if not NULL
             if(!is.null(response_from_website)){
+                stopifnot(!is.null(response_from_website$datasetVersion$state))
                 response$datasetVersion$state <- response_from_website$datasetVersion$state
                 response$datasetVersion$reason_state <- response_from_website$datasetVersion$reason_state
             }
@@ -398,6 +399,7 @@ force.taiga, taiga.url, cache.id, quiet, data.file, force.convert, no.save, toke
         data.state <- response$datasetVersion$state
         data.reason_state <- response$datasetVersion$reason_state
 
+        stopifnot(!is.null(data.state))
         if(data.state == 'deprecated'){
             message = paste("This dataset version is deprecated. Please use with caution. Reason for deprecation:",
                             data.reason_state,
