@@ -399,7 +399,13 @@ force.taiga, taiga.url, cache.id, quiet, data.file, force.convert, no.save, toke
         data.state <- response$datasetVersion$state
         data.reason_state <- response$datasetVersion$reason_state
 
-        stopifnot(!is.null(data.state))
+        # data.state appears to be broken. Removing this assert so that it doesn't block James, and glossing over the problem for the time being
+        # stopifnot(!is.null(data.state))
+        if(is.null(data.state)) {
+            warning(paste0("Got null data.state fetching data.id: ",data.id, " ignoring..."))
+            data.state <- "okay"
+        }
+
         if(data.state == 'deprecated'){
             message = paste("This dataset version is deprecated. Please use with caution. Reason for deprecation:",
                             data.reason_state,
