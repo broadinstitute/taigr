@@ -12,7 +12,7 @@ echo YOUR_TOKEN_HERE > ~/.taiga/token
 ```
 
 ## Installation
-To install the last 'released' version:
+Within the Broad, to install the last 'released' version:
 
 ```
 options(repos = c(
@@ -24,15 +24,15 @@ install.packages('taigr')
 To install a development version from git:
 
 ```
-git clone ssh://git@stash.broadinstitute.org:7999/cpds/taigr.git
+git clone https://github.com/broadinstitute/taigr.git
 R CMD INSTALL .
 ```
 
-Alternatively if you have a working git2r package installed (most people don't) you can install via:
+Alternatively if you have a working git2r package installed (many people don't) you can install via:
 
 ```
 library(devtools)
-install_git(url="ssh://git@stash.broadinstitute.org:7999/cpds/taigr.git")
+install_git(url="https://github.com/broadinstitute/taigr.git")
 ```
 
 
@@ -41,7 +41,7 @@ install_git(url="ssh://git@stash.broadinstitute.org:7999/cpds/taigr.git")
 ```
 library(taigr)
 demeter <- load.from.taiga(
-	data.name = "achilles-v2-20-1-demeter-z-scores-ignoring-expression",
+	data.name = "demeter-2-data-20123df",
 	data.version = 1)
 ```
 
@@ -50,34 +50,15 @@ demeter <- load.from.taiga(
 Useful if you want to see if there is an updated version of this dataset
 
 ```
-visit.taiga.page(data.name = "achilles-v2-20-1-demeter-z-scores-ignoring-expression")
+visit.taiga.page(data.name = "demeter-2-data-20123df")
 ```
 
 or if you have the ID, but don't know what dataset it is
 
 ```
-visit.taiga.page(data.id = "3f6bc24c-1679-43c5-beff-c4a084af13e3")
+visit.taiga.page(data.id = "3f6bc24c-1679-43c5-324112-3122")
 ```
 
-## Load many datasets at once
-
-```
-datasets.info <- list(
-    CNV = list(
-        data.name = "ccle-copy-number-variants",
-        data.version = 1,
-        transpose = T),
-    RPKM = list(
-        data.name="ccle-rnaseq-gene-expression-rpkm-for-analysis-in-manuscripts-protein-coding-genes-only-hgnc-mapped",
-        data.version = 3,
-        transpose = T),
-    Demeter = list(
-        data.name="achilles-v2-20-1-demeter-z-scores-ignoring-expression",
-        data.version=1)
-)
-
-datasets <- load.all.from.taiga(datasets.info)
-```
 
 ## Package documentation
 
