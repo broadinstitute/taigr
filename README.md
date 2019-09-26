@@ -35,6 +35,15 @@ library(devtools)
 install_git(url="https://github.com/broadinstitute/taigr.git")
 ```
 
+To install in a docker container:
+```
+RUN curl -L -o taigr.zip https://github.com/broadinstitute/taigr/archive/master.zip && \
+    unzip taigr.zip && \
+    cd taigr-master && \
+    R CMD INSTALL .
+```
+
+
 
 ## Quick start
 
