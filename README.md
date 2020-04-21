@@ -54,20 +54,6 @@ demeter <- load.from.taiga(
 	data.version = 1)
 ```
 
-## Open taiga URL in web browser
-
-Useful if you want to see if there is an updated version of this dataset
-
-```
-visit.taiga.page(data.name = "demeter-2-data-20123df")
-```
-
-or if you have the ID, but don't know what dataset it is
-
-```
-visit.taiga.page(data.id = "3f6bc24c-1679-43c5-324112-3122")
-```
-
 
 ## Package documentation
 
