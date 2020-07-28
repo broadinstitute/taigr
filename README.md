@@ -18,6 +18,10 @@ Within the Broad, to install the last 'released' version:
 options(repos = c(
 	"https://iwww.broadinstitute.org/~datasci/R-packages",
 	"https://cran.cnr.berkeley.edu"))
+# For R version >4.0.0 instead use
+options(repos = c(
+      "https://iwww.broadinstitute.org/~datasci/R-packages",
+      "https://cran.rstudio.com/"))
 install.packages('taigr')
 ```
 
