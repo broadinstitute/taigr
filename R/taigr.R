@@ -136,7 +136,7 @@ load.from.taiga <- function(data.id = NULL,
     if (download.info$error) {
         return(NULL)
     }
-    df <- feather::read_feather(download.info$filename)
+    df <- arrow::read_feather(download.info$filename)
     datafile_type <- download.info$datafile_type
 
     if (datafile_type == "HDF5") {
@@ -256,8 +256,7 @@ load.all.datafiles.from.taiga <- function(datasetVersion.id = NULL,
                                           dataset.version = NULL,
                                           transpose = FALSE,
                                           cache.dir = "~/.taiga",
-                                          taiga.url = getOption("default.taiga.url", "https://cds.team/taiga"),
-                                          ) {
+                                          taiga.url = getOption("default.taiga.url", "https://cds.team/taiga")) {
     tmpf <- tempfile(fileext = ".json")
     cmd <- get.taiga.client.metadata.command(
         datasetVersion.id,
