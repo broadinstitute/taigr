@@ -28,15 +28,13 @@ install.packages('taigr')
 To install a development version from git:
 
 ```
-git clone https://github.com/broadinstitute/taigr.git
-R CMD INSTALL .
 ```
 
-Alternatively if you have a working git2r package installed (many people don't) you can install via:
-
 ```
-library(devtools)
-install_git(url="https://github.com/broadinstitute/taigr.git")
+$ git clone https://github.com/broadinstitute/taigr.git
+$ R
+> library(devtools)
+> install_git(url="https://github.com/broadinstitute/taigr.git")
 ```
 
 To install in a docker container:
