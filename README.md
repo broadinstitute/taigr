@@ -34,7 +34,7 @@ To install a development version from git:
 $ git clone https://github.com/broadinstitute/taigr.git
 $ R
 > library(devtools)
-> install_git(url="https://github.com/broadinstitute/taigr.git")
+> install(".")
 ```
 
 To install in a docker container:
