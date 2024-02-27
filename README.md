@@ -12,27 +12,10 @@ echo YOUR_TOKEN_HERE > ~/.taiga/token
 ```
 
 ## Installation
-Within the Broad, to install the last 'released' version:
-
-```R
-options(repos = c(
-	"https://iwww.broadinstitute.org/~datasci/R-packages",
-	"https://cran.cnr.berkeley.edu"))
-install.packages('taigr')
-```
-
-To install a development version from git:
-
-```
-git clone https://github.com/broadinstitute/taigr.git
-R CMD INSTALL .
-```
-
-Alternatively if you have a working git2r package installed (many people don't) you can install via:
 
 ```R
 library(devtools)
-install_git(url="https://github.com/broadinstitute/taigr.git")
+devtools::install_github("https://github.com/broadinstitute/taigr")
 ```
 
 To install in a docker container:
