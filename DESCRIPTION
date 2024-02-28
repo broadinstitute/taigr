@@ -20,6 +20,7 @@ Imports:
     hash
 Depends:
     RCurl,
-    httr
+    httr,
+    arrow
 Suggests: testthat
 RoxygenNote: 6.1.1
