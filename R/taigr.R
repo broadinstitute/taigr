@@ -11,6 +11,10 @@
 #'
 NULL
 
+get.taigaclient.path <- function() {
+    return( getOption("taigaclient.path", "taigaclient"))
+}
+
 #' Load multiple datasets from taiga
 #'
 #' @param info named list of arguments to load.from.taiga
@@ -51,8 +55,8 @@ get.taiga.client.fetch.command <- function(
     cache.format,
     tmpf
 ) {
-    cmd <- paste(
-        "taigaclient --taiga-url=",
+    cmd <- paste(get.taigaclient.path(),
+        " --taiga-url=",
         taiga.url,
         " --data-dir=",
         data.dir,
@@ -99,6 +103,14 @@ get.taiga.client.fetch.command <- function(
     return(cmd)
 }
 
+run.with.stop.on.error <- function(cmd) {
+    retcode <- system(cmd)
+    if (retcode != 0) {
+        error.msg <- paste0("The following command reported an error: ", cmd)
+        stop(error.msg)
+    }
+}
+
 #' Load data from taiga
 #'
 #' @param data.id The dataset ID in taiga.
@@ -131,19 +143,26 @@ load.from.taiga <- function(data.id = NULL,
         "feather",
         tmpf
     )
-    system(cmd)
+    run.with.stop.on.error(cmd)
     download.info <- jsonlite::fromJSON(tmpf)
     if (download.info$error) {
         return(NULL)
     }
+
+    if (download.info$schema_version != "1") {
+        stop("incompatible version of taigapy detected. Upgrade taigapy?")
+    }
+
     df <- arrow::read_feather(download.info$filename)
     datafile_type <- download.info$datafile_type
 
-    if (datafile_type == "HDF5") {
+    if (datafile_type == "HDF5" || datafile_type == "feather_matrix") {
         df <- tibble::column_to_rownames(df, var=colnames(df)[[1]])
         df <- as.matrix(df)
-    } else if (datafile_type == "Columnar") {
+    } else if (datafile_type == "Columnar" || datafile_type == "feather_table") {
         df <- as.data.frame(df)
+    } else {
+        stop(paste("invalid type", datafile_type))
     }
 
     if (transpose) {
@@ -175,7 +194,7 @@ download.raw.from.taiga <- function(data.id = NULL,
         "raw",
         tmpf
     )
-    system(cmd)
+    run.with.stop.on.error(cmd)
     download.info <- jsonlite::fromJSON(tmpf)
     return(download.info$filename)
 }
@@ -190,8 +209,8 @@ get.taiga.client.metadata.command <- function(
     data.file,
     tmpf
 ) {
-    cmd <- paste(
-        "taigaclient --taiga-url=",
+    cmd <- paste(get.taigaclient.path(),
+        " --taiga-url=",
         taiga.url,
         " --data-dir=",
         data.dir,
@@ -267,7 +286,7 @@ load.all.datafiles.from.taiga <- function(datasetVersion.id = NULL,
         NULL,
         tmpf
     ) 
-    system(cmd)
+    run.with.stop.on.error(cmd)
 
     download.info <- tryCatch({
         jsonlite::fromJSON(tmpf)
